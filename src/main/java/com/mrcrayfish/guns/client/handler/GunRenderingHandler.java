@@ -70,7 +70,8 @@ import java.util.*;
 
 public class GunRenderingHandler {
     public static final ResourceLocation MUZZLE_FLASH_TEXTURE = ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "textures/effect/muzzle_flash.png");
-    public static final ResourceLocation GUI_ICONS_LOCATION = ResourceLocation.parse( "textures/gui/icons.png"); // Kinda hacky
+    public static final ResourceLocation ATTACK_INDICATOR_BACKGROUND = ResourceLocation.withDefaultNamespace("hud/crosshair_attack_indicator_background");
+    public static final ResourceLocation ATTACK_INDICATOR_PROGRESS = ResourceLocation.withDefaultNamespace("hud/crosshair_attack_indicator_progress");
     private static GunRenderingHandler instance;
     private final Random random = new Random();
     private final Set<Integer> entityIdForMuzzleFlash = new HashSet<>();
@@ -514,10 +515,8 @@ public class GunRenderingHandler {
                     graphics.pose().pushPose();
                     graphics.pose().scale(scale, scale, scale);
                     int progress = (int) Math.ceil((cookTime) * 17.0F) - 1;
-                    graphics.fill(j - 1, i - 1, j + 17, i + 5, 0xFF000000);
-                    graphics.fill(j, i, j + 16, i + 4, 0xFF404040);
-                    if(progress > 0)
-                        graphics.fill(j, i, j + progress, i + 4, 0xFF00E000);
+                    graphics.blitSprite(ATTACK_INDICATOR_BACKGROUND, j, i, 16, 4);
+                    graphics.blitSprite(ATTACK_INDICATOR_PROGRESS, 16, 4, 0, 0, j, i, Math.min(progress, 16), 4);
                     graphics.pose().popPose();
                 }
             }
@@ -538,10 +537,8 @@ public class GunRenderingHandler {
                     graphics.pose().pushPose();
                     graphics.pose().scale(scale, scale, scale);
                     int progress = (int) Math.ceil((coolDown + 0.05) * 17.0F) - 1;
-                    graphics.fill(j - 1, i - 1, j + 17, i + 5, 0xFF000000);
-                    graphics.fill(j, i, j + 16, i + 4, 0xFF404040);
-                    if(progress > 0)
-                        graphics.fill(j, i, j + progress, i + 4, 0xFF00E000);
+                    graphics.blitSprite(ATTACK_INDICATOR_BACKGROUND, j, i, 16, 4);
+                    graphics.blitSprite(ATTACK_INDICATOR_PROGRESS, 16, 4, 0, 0, j, i, Math.min(progress, 16), 4);
                     graphics.pose().popPose();
                 }
             }
