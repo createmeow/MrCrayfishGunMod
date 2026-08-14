@@ -14,6 +14,7 @@ import com.mrcrayfish.guns.item.attachment.IAttachment;
 import com.mrcrayfish.guns.item.attachment.IBarrel;
 import com.mrcrayfish.guns.item.attachment.IScope;
 import com.mrcrayfish.guns.item.attachment.impl.Scope;
+import com.mrcrayfish.guns.util.ItemStackUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.util.Mth;
@@ -50,10 +51,13 @@ public final class PropertyHelper
         // First try to get data from attachment data
         if(stack.getItem() instanceof IMeta)
         {
-            return MetaLoader.getInstance().getData(stack.getItem());
+            DataObject data = MetaLoader.getInstance().getData(stack.getItem());
+            if(data != null)
+                return data;
         }
         // Otherwise try to get the data from the model
-        return FrameworkClientAPI.getOpenModelData(stack, null, null, 0);
+        DataObject data = FrameworkClientAPI.getOpenModelData(stack, null, null, 0);
+        return data != null ? data : DataObject.EMPTY;
     }
 
     public static Vec3 getScopeCamera(ItemStack stack)
@@ -235,7 +239,7 @@ public final class PropertyHelper
     public static int getReticleColor(ItemStack stack)
     {
         // Prioritise getting the reticle colour from the ItemStack tag
-        CompoundTag tag = stack.getTag();
+        CompoundTag tag = ItemStackUtil.getTag(stack);
         if(tag != null && tag.contains("ReticleColor", Tag.TAG_INT))
         {
             return tag.getInt("ReticleColor");
@@ -375,3 +379,4 @@ public final class PropertyHelper
 
     }
 }
+

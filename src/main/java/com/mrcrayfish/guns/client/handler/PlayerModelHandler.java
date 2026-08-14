@@ -4,11 +4,12 @@ import com.mrcrayfish.guns.common.Gun;
 import com.mrcrayfish.guns.item.GunItem;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.client.event.RenderPlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
 
 /**
  * Author: MrCrayfish
@@ -51,7 +52,7 @@ public class PlayerModelHandler
     {
         /* Makes sure the model part positions reset back to original definitions */
         PlayerModel<AbstractClientPlayer> model = event.getRenderer().getModel();
-        boolean slim = ((AbstractClientPlayer) event.getEntity()).getModelName().equals("slim");
+        boolean slim = ((AbstractClientPlayer) event.getEntity()).getSkin().model() == PlayerSkin.Model.SLIM;
         model.rightArm.x = -5.0F;
         model.rightArm.y = slim ? 2.5F : 2.0F;
         model.rightArm.z = 0.0F;

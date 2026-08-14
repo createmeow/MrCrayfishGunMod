@@ -1,17 +1,16 @@
 package com.mrcrayfish.guns.network.message;
 
 import com.mrcrayfish.framework.api.network.MessageContext;
-import com.mrcrayfish.framework.api.network.message.PlayMessage;
 import com.mrcrayfish.guns.client.network.ClientPlayHandler;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+
 
 import java.util.function.Supplier;
 
 /**
  * Author: MrCrayfish
  */
-public class S2CMessageProjectileHitEntity extends PlayMessage<S2CMessageProjectileHitEntity>
+public class S2CMessageProjectileHitEntity
 {
     private double x;
     private double y;
@@ -30,8 +29,7 @@ public class S2CMessageProjectileHitEntity extends PlayMessage<S2CMessageProject
         this.player = player;
     }
 
-    @Override
-    public void encode(S2CMessageProjectileHitEntity message, FriendlyByteBuf buffer)
+    public static void encode(S2CMessageProjectileHitEntity message, FriendlyByteBuf buffer)
     {
         buffer.writeDouble(message.x);
         buffer.writeDouble(message.y);
@@ -40,8 +38,7 @@ public class S2CMessageProjectileHitEntity extends PlayMessage<S2CMessageProject
         buffer.writeBoolean(message.player);
     }
 
-    @Override
-    public S2CMessageProjectileHitEntity decode(FriendlyByteBuf buffer)
+    public static S2CMessageProjectileHitEntity decode(FriendlyByteBuf buffer)
     {
         double x = buffer.readDouble();
         double y = buffer.readDouble();
@@ -51,8 +48,7 @@ public class S2CMessageProjectileHitEntity extends PlayMessage<S2CMessageProject
         return new S2CMessageProjectileHitEntity(x, y, z, type, player);
     }
 
-    @Override
-    public void handle(S2CMessageProjectileHitEntity message, MessageContext context)
+    public static void handle(S2CMessageProjectileHitEntity message, MessageContext context)
     {
         context.execute(() -> ClientPlayHandler.handleProjectileHitEntity(message));
         context.setHandled(true);

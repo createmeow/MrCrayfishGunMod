@@ -1,5 +1,6 @@
 package com.mrcrayfish.guns.entity;
 
+import com.mrcrayfish.guns.Config;
 import com.mrcrayfish.guns.common.Gun;
 import com.mrcrayfish.guns.item.GunItem;
 import net.minecraft.core.BlockPos;
@@ -30,18 +31,18 @@ public class GrenadeEntity extends ProjectileEntity
     @Override
     protected void onHitEntity(Entity entity, Vec3 hitVec, Vec3 startVec, Vec3 endVec, boolean headshot)
     {
-        createExplosion(this, this.getDamage() / 5F, true);
+        createExplosion(this, this.getDamage() / 5F, Config.COMMON.grenades.enableBlockRemoval.get());
     }
 
     @Override
     protected void onHitBlock(BlockState state, BlockPos pos, Direction face, double x, double y, double z)
     {
-        createExplosion(this, this.getDamage() / 5F, true);
+        createExplosion(this, this.getDamage() / 5F, Config.COMMON.grenades.enableBlockRemoval.get());
     }
 
     @Override
     public void onExpired()
     {
-        createExplosion(this, this.getDamage() / 5F, true);
+        createExplosion(this, this.getDamage() / 5F, Config.COMMON.grenades.enableBlockRemoval.get());
     }
 }

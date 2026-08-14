@@ -1,15 +1,17 @@
 package com.mrcrayfish.guns.compat;
 
-import com.mrcrayfish.backpacked.Backpacked;
-import com.mrcrayfish.backpacked.core.ModEnchantments;
+import com.mrcrayfish.backpacked.common.augment.Augments;
+import com.mrcrayfish.backpacked.core.ModAugmentTypes;
 import com.mrcrayfish.backpacked.inventory.BackpackInventory;
 import com.mrcrayfish.backpacked.inventory.BackpackedInventoryAccess;
+import com.mrcrayfish.guns.Config;
 import com.mrcrayfish.guns.common.AmmoContext;
 import com.mrcrayfish.guns.common.Gun;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
+
+import java.util.List;
 
 /**
  * Author: MrCrayfish
@@ -18,23 +20,29 @@ public class BackpackHelper
 {
     public static AmmoContext findAmmo(Player player, ResourceLocation id)
     {
-        ItemStack backpack = Backpacked.getBackpackStack(player);
-        if(backpack.isEmpty())
-            return AmmoContext.NONE;
+        List<BackpackInventory> inventories = ((BackpackedInventoryAccess) player)
+                .backpacked$streamNonNullBackpackInventories()
+                .toList();
 
-        if(EnchantmentHelper.getItemEnchantmentLevel(ModEnchantments.MARKSMAN.get(), backpack) <= 0)
-            return AmmoContext.NONE;
+        boolean needsAugment = Config.COMMON.compatibilities.backpackedNeedsQuiverLink2ReloadFromBackpack.get();
 
-        BackpackInventory inventory = ((BackpackedInventoryAccess) player).getBackpackedInventory();
-        if(inventory == null)
-            return AmmoContext.NONE;
-
-        for(int i = 0; i < inventory.getContainerSize(); i++)
+        for(BackpackInventory inventory : inventories)
         {
-            ItemStack stack = inventory.getItem(i);
-            if(Gun.isAmmo(stack, id))
+            ItemStack backpack = inventory.getBackpackStack();
+
+            if(backpack.isEmpty())
+                continue;
+
+            if(needsAugment && !Augments.get(backpack).has(ModAugmentTypes.QUIVERLINK.get()))
+                continue;
+
+            for(int i = 0; i < inventory.getContainerSize(); i++)
             {
-                return new AmmoContext(stack, inventory);
+                ItemStack stack = inventory.getItem(i);
+                if(Gun.isAmmo(stack, id))
+                {
+                    return new AmmoContext(stack, inventory);
+                }
             }
         }
 

@@ -1,18 +1,17 @@
 package com.mrcrayfish.guns.network.message;
 
 import com.mrcrayfish.framework.api.network.MessageContext;
-import com.mrcrayfish.framework.api.network.message.PlayMessage;
 import com.mrcrayfish.guns.init.ModSyncedDataKeys;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+
 
 import java.util.function.Supplier;
 
 /**
  * Author: MrCrayfish
  */
-public class C2SMessageShooting extends PlayMessage<C2SMessageShooting>
+public class C2SMessageShooting
 {
     private boolean shooting;
 
@@ -23,24 +22,21 @@ public class C2SMessageShooting extends PlayMessage<C2SMessageShooting>
         this.shooting = shooting;
     }
 
-    @Override
-    public void encode(C2SMessageShooting message, FriendlyByteBuf buffer)
+    public static void encode(C2SMessageShooting message, FriendlyByteBuf buffer)
     {
         buffer.writeBoolean(message.shooting);
     }
 
-    @Override
-    public C2SMessageShooting decode(FriendlyByteBuf buffer)
+    public static C2SMessageShooting decode(FriendlyByteBuf buffer)
     {
         return new C2SMessageShooting(buffer.readBoolean());
     }
 
-    @Override
-    public void handle(C2SMessageShooting message, MessageContext context)
+    public static void handle(C2SMessageShooting message, MessageContext context)
     {
         context.execute(() ->
         {
-            ServerPlayer player = context.getPlayer();
+            ServerPlayer player = (ServerPlayer) context.getPlayer().orElse(null);
             if(player != null)
             {
                 ModSyncedDataKeys.SHOOTING.setValue(player, message.shooting);

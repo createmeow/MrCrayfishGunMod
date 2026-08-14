@@ -9,15 +9,16 @@ import com.mrcrayfish.guns.network.PacketHandler;
 import com.mrcrayfish.guns.network.message.C2SMessageReload;
 import com.mrcrayfish.guns.network.message.C2SMessageUnload;
 import com.mrcrayfish.guns.util.GunEnchantmentHelper;
+import com.mrcrayfish.guns.util.ItemStackUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.bus.api.SubscribeEvent;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -46,11 +47,8 @@ public class ReloadHandler
     }
 
     @SubscribeEvent
-    public void onClientTick(TickEvent.ClientTickEvent event)
+    public void onClientTick(ClientTickEvent.Post event)
     {
-        if(event.phase != TickEvent.Phase.END)
-            return;
-
         this.prevReloadTimer = this.reloadTimer;
 
         Player player = Minecraft.getInstance().player;
@@ -58,7 +56,7 @@ public class ReloadHandler
         {
             if(ModSyncedDataKeys.RELOADING.getValue(player))
             {
-                if(this.reloadingSlot != player.getInventory().selected)
+                if(this.reloadingSlot != player.getInventory().selected || this.isReloadFinished(player))
                 {
                     this.setReloading(false);
                 }
@@ -96,18 +94,18 @@ public class ReloadHandler
                 ItemStack stack = player.getMainHandItem();
                 if(stack.getItem() instanceof GunItem)
                 {
-                    CompoundTag tag = stack.getTag();
-                    if(tag != null && !tag.contains("IgnoreAmmo", Tag.TAG_BYTE))
+                    CompoundTag tag = ItemStackUtil.getOrCreateTag(stack);
+                    if(!tag.contains("IgnoreAmmo", Tag.TAG_BYTE))
                     {
                         Gun gun = ((GunItem) stack.getItem()).getModifiedGun(stack);
                         if(tag.getInt("AmmoCount") >= GunEnchantmentHelper.getAmmoCapacity(stack, gun))
                             return;
-                        if(MinecraftForge.EVENT_BUS.post(new GunReloadEvent.Pre(player, stack)))
+                        if(NeoForge.EVENT_BUS.post(new GunReloadEvent.Pre(player, stack)).isCanceled())
                             return;
                         ModSyncedDataKeys.RELOADING.setValue(player, true);
                         PacketHandler.getPlayChannel().sendToServer(new C2SMessageReload(true));
                         this.reloadingSlot = player.getInventory().selected;
-                        MinecraftForge.EVENT_BUS.post(new GunReloadEvent.Post(player, stack));
+                        NeoForge.EVENT_BUS.post(new GunReloadEvent.Post(player, stack));
                     }
                 }
             }
@@ -118,6 +116,28 @@ public class ReloadHandler
                 this.reloadingSlot = -1;
             }
         }
+    }
+
+    /**
+     * Client-side safety net for the case where the server's "reload finished" sync never
+     * reaches this client (e.g. a dropped/desynced {@code RELOADING} update). The held gun's
+     * ammo count is synced through the normal inventory updates, so we can independently detect
+     * that the magazine is full (or that the held item is no longer a gun) and stop the reload
+     * ourselves, instead of getting stuck in the reload animation until the player switches items.
+     *
+     * @param player the client player
+     * @return true if the reload should be stopped
+     */
+    private boolean isReloadFinished(Player player)
+    {
+        ItemStack stack = player.getMainHandItem();
+        if(!(stack.getItem() instanceof GunItem))
+            return true;
+        CompoundTag tag = ItemStackUtil.getOrCreateTag(stack);
+        if(tag.contains("IgnoreAmmo", Tag.TAG_BYTE))
+            return false;
+        Gun gun = ((GunItem) stack.getItem()).getModifiedGun(stack);
+        return tag.getInt("AmmoCount") >= GunEnchantmentHelper.getAmmoCapacity(stack, gun);
     }
 
     private void updateReloadTimer(Player player)
@@ -161,3 +181,5 @@ public class ReloadHandler
         return (this.prevReloadTimer + (this.reloadTimer - this.prevReloadTimer) * partialTicks) / 5F;
     }
 }
+
+

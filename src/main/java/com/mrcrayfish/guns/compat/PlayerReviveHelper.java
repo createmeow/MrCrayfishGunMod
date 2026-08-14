@@ -12,7 +12,6 @@ import java.lang.reflect.Method;
 public class PlayerReviveHelper
 {
     private static boolean disable = false;
-    private static Method getBleeding;
     private static Method isBleeding;
 
     public static boolean isBleeding(Player player)
@@ -23,8 +22,7 @@ public class PlayerReviveHelper
         try
         {
             init();
-            Object object = getBleeding.invoke(null, player);
-            return (boolean) isBleeding.invoke(object);
+            return (boolean) isBleeding.invoke(null, player);
         }
         catch(InvocationTargetException | IllegalAccessException e)
         {
@@ -35,14 +33,12 @@ public class PlayerReviveHelper
 
     private static void init()
     {
-        if(getBleeding == null)
+        if(isBleeding == null)
         {
             try
             {
                 Class<?> playerReviveServer = Class.forName("team.creative.playerrevive.server.PlayerReviveServer");
-                getBleeding = playerReviveServer.getDeclaredMethod("getBleeding", Player.class);
-                Class<?> bleeding = Class.forName("team.creative.playerrevive.cap.Bleeding");
-                isBleeding = bleeding.getDeclaredMethod("isBleeding");
+                isBleeding = playerReviveServer.getDeclaredMethod("isBleeding", Player.class);
             }
             catch(ClassNotFoundException | NoSuchMethodException ignored)
             {

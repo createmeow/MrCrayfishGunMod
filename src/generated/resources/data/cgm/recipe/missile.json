@@ -1,0 +1,16 @@
+{
+  "type": "cgm:workbench",
+  "materials": [
+    {
+      "count": 2,
+      "tag": "c:nuggets/iron"
+    },
+    {
+      "count": 4,
+      "tag": "c:gunpowders"
+    }
+  ],
+  "result": {
+    "id": "cgm:missile"
+  }
+}

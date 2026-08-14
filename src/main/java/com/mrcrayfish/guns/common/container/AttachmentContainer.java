@@ -4,6 +4,8 @@ import com.mrcrayfish.guns.common.Gun;
 import com.mrcrayfish.guns.common.container.slot.AttachmentSlot;
 import com.mrcrayfish.guns.init.ModContainers;
 import com.mrcrayfish.guns.item.attachment.IAttachment;
+import com.mrcrayfish.guns.util.ItemStackUtil;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -106,12 +108,13 @@ public class AttachmentContainer extends AbstractContainerMenu
             ItemStack attachment = this.getSlot(i).getItem();
             if(attachment.getItem() instanceof IAttachment)
             {
-                attachments.put(((IAttachment) attachment.getItem()).getType().getTagKey(), attachment.save(new CompoundTag()));
+                attachments.put(((IAttachment) attachment.getItem()).getType().getTagKey(), attachment.save(RegistryAccess.EMPTY));
             }
         }
 
-        CompoundTag tag = this.weapon.getOrCreateTag();
+        CompoundTag tag = ItemStackUtil.getOrCreateTag(this.weapon);
         tag.put("Attachments", attachments);
+        ItemStackUtil.setTag(this.weapon, tag);
         super.broadcastChanges();
     }
 
@@ -159,3 +162,4 @@ public class AttachmentContainer extends AbstractContainerMenu
         return this.weaponInventory;
     }
 }
+

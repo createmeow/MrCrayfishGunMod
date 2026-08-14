@@ -1,32 +1,37 @@
 package com.mrcrayfish.guns.item;
 
 import com.mrcrayfish.guns.GunMod;
+import com.mrcrayfish.guns.Reference;
 import com.mrcrayfish.guns.client.GunItemStackRenderer;
 import com.mrcrayfish.guns.client.KeyBinds;
 import com.mrcrayfish.guns.common.Gun;
 import com.mrcrayfish.guns.common.NetworkGunManager;
 import com.mrcrayfish.guns.debug.Debug;
-import com.mrcrayfish.guns.enchantment.EnchantmentTypes;
 import com.mrcrayfish.guns.util.GunEnchantmentHelper;
 import com.mrcrayfish.guns.util.GunModifierHelper;
+import com.mrcrayfish.guns.util.ItemStackUtil;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.core.HolderSet;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.WeakHashMap;
 import java.util.function.Consumer;
 
@@ -52,18 +57,18 @@ public class GunItem extends Item implements IColored, IMeta
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level worldIn, List<Component> tooltip, TooltipFlag flag)
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag)
     {
         Gun modifiedGun = this.getModifiedGun(stack);
 
-        Item ammo = ForgeRegistries.ITEMS.getValue(modifiedGun.getProjectile().getItem());
+        Item ammo = BuiltInRegistries.ITEM.get(modifiedGun.getProjectile().getItem());
         if(ammo != null)
         {
             tooltip.add(Component.translatable("info.cgm.ammo_type", Component.translatable(ammo.getDescriptionId()).withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GRAY));
         }
 
         String additionalDamageText = "";
-        CompoundTag tagCompound = stack.getTag();
+        CompoundTag tagCompound = ItemStackUtil.getTag(stack);
         if(tagCompound != null)
         {
             if(tagCompound.contains("AdditionalDamage", Tag.TAG_ANY_NUMERIC))
@@ -73,11 +78,11 @@ public class GunItem extends Item implements IColored, IMeta
 
                 if(additionalDamage > 0)
                 {
-                    additionalDamageText = ChatFormatting.GREEN + " +" + ItemStack.ATTRIBUTE_MODIFIER_FORMAT.format(additionalDamage);
+                    additionalDamageText = ChatFormatting.GREEN + " +" + String.format("%.2f", additionalDamage);
                 }
                 else if(additionalDamage < 0)
                 {
-                    additionalDamageText = ChatFormatting.RED + " " + ItemStack.ATTRIBUTE_MODIFIER_FORMAT.format(additionalDamage);
+                    additionalDamageText = ChatFormatting.RED + " " + String.format("%.2f", additionalDamage);
                 }
             }
         }
@@ -85,7 +90,7 @@ public class GunItem extends Item implements IColored, IMeta
         float damage = modifiedGun.getProjectile().getDamage();
         damage = GunModifierHelper.getModifiedProjectileDamage(stack, damage);
         damage = GunEnchantmentHelper.getAcceleratorDamage(stack, damage);
-        tooltip.add(Component.translatable("info.cgm.damage", ChatFormatting.WHITE + ItemStack.ATTRIBUTE_MODIFIER_FORMAT.format(damage) + additionalDamageText).withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("info.cgm.damage", ChatFormatting.WHITE + String.format("%.2f", damage) + additionalDamageText).withStyle(ChatFormatting.GRAY));
 
         if(tagCompound != null)
         {
@@ -118,7 +123,7 @@ public class GunItem extends Item implements IColored, IMeta
     @Override
     public boolean isBarVisible(ItemStack stack)
     {
-        CompoundTag tagCompound = stack.getOrCreateTag();
+        CompoundTag tagCompound = ItemStackUtil.getOrCreateTag(stack);
         Gun modifiedGun = this.getModifiedGun(stack);
         return !tagCompound.getBoolean("IgnoreAmmo") && tagCompound.getInt("AmmoCount") != GunEnchantmentHelper.getAmmoCapacity(stack, modifiedGun);
     }
@@ -126,7 +131,7 @@ public class GunItem extends Item implements IColored, IMeta
     @Override
     public int getBarWidth(ItemStack stack)
     {
-        CompoundTag tagCompound = stack.getOrCreateTag();
+        CompoundTag tagCompound = ItemStackUtil.getOrCreateTag(stack);
         Gun modifiedGun = this.getModifiedGun(stack);
         return (int) (13.0 * (tagCompound.getInt("AmmoCount") / (double) GunEnchantmentHelper.getAmmoCapacity(stack, modifiedGun)));
     }
@@ -139,7 +144,7 @@ public class GunItem extends Item implements IColored, IMeta
 
     public Gun getModifiedGun(ItemStack stack)
     {
-        CompoundTag tagCompound = stack.getTag();
+        CompoundTag tagCompound = ItemStackUtil.getTag(stack);
         if(tagCompound != null && tagCompound.contains("Gun", Tag.TAG_COMPOUND))
         {
             return this.modifiedGunCache.computeIfAbsent(tagCompound, item ->
@@ -164,17 +169,6 @@ public class GunItem extends Item implements IColored, IMeta
     }
 
     @Override
-    public boolean canApplyAtEnchantingTable(ItemStack stack, Enchantment enchantment)
-    {
-        if(enchantment.category == EnchantmentTypes.SEMI_AUTO_GUN)
-        {
-            Gun modifiedGun = this.getModifiedGun(stack);
-            return !modifiedGun.getGeneral().isAuto();
-        }
-        return super.canApplyAtEnchantingTable(stack, enchantment);
-    }
-
-    @Override
     public boolean isEnchantable(ItemStack stack)
     {
         return this.getMaxStackSize(stack) == 1;
@@ -184,6 +178,37 @@ public class GunItem extends Item implements IColored, IMeta
     public int getEnchantmentValue()
     {
         return 5;
+    }
+
+    @Override
+    public boolean supportsEnchantment(ItemStack stack, Holder<Enchantment> enchantment)
+    {
+        if(enchantment.unwrapKey().map(key -> key.location().getNamespace().equals(Reference.MOD_ID)).orElse(false))
+        {
+            return true;
+        }
+        return stack.is(Items.ENCHANTED_BOOK) || enchantment.value().isSupportedItem(stack);
+    }
+
+    @Override
+    public boolean isPrimaryItemFor(ItemStack stack, Holder<Enchantment> enchantment)
+    {
+        if(enchantment.unwrapKey().map(key -> key.location().getNamespace().equals(Reference.MOD_ID)).orElse(false))
+        {
+            return true;
+        }
+        if(stack.getItem() == Items.BOOK)
+        {
+            return true;
+        }
+        Optional<HolderSet<Item>> primaryItems = enchantment.value().definition().primaryItems();
+        return this.supportsEnchantment(stack, enchantment) && (primaryItems.isEmpty() || stack.is(primaryItems.get()));
+    }
+
+    @Override
+    public boolean isDamageable(ItemStack stack)
+    {
+        return false;
     }
 
     @Override
@@ -199,3 +224,4 @@ public class GunItem extends Item implements IColored, IMeta
         });
     }
 }
+

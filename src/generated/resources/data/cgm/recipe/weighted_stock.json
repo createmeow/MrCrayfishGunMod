@@ -1,0 +1,16 @@
+{
+  "type": "cgm:workbench",
+  "materials": [
+    {
+      "count": 12,
+      "tag": "c:nuggets/iron"
+    },
+    {
+      "count": 1,
+      "item": "minecraft:gray_wool"
+    }
+  ],
+  "result": {
+    "id": "cgm:weighted_stock"
+  }
+}

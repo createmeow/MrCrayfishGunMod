@@ -59,13 +59,13 @@ public class InventoryUtil
         {
             return false;
         }
-        else if(source.getTag() == null && target.getTag() != null)
+        else if(ItemStackUtil.getTag(source) == null && ItemStackUtil.getTag(target) != null)
         {
             return false;
         }
         else
         {
-            return (source.getTag() == null || source.getTag().equals(target.getTag())) && source.areCapsCompatible(target);
+            return ItemStackUtil.getTag(source) == null || ItemStackUtil.getTag(source).equals(ItemStackUtil.getTag(target));
         }
     }
 
@@ -106,3 +106,4 @@ public class InventoryUtil
         return false;
     }
 }
+

@@ -13,12 +13,12 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.client.event.RenderGuiOverlayEvent;
-import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.config.ModConfigEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.config.ModConfigEvent;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -48,18 +48,18 @@ public class CrosshairHandler
 
     private CrosshairHandler()
     {
-        this.register(new TexturedCrosshair(new ResourceLocation(Reference.MOD_ID, "better_default")));
-        this.register(new TexturedCrosshair(new ResourceLocation(Reference.MOD_ID, "circle")));
-        this.register(new TexturedCrosshair(new ResourceLocation(Reference.MOD_ID, "filled_circle"), false));
-        this.register(new TexturedCrosshair(new ResourceLocation(Reference.MOD_ID, "square")));
-        this.register(new TexturedCrosshair(new ResourceLocation(Reference.MOD_ID, "round")));
-        this.register(new TexturedCrosshair(new ResourceLocation(Reference.MOD_ID, "arrow")));
-        this.register(new TexturedCrosshair(new ResourceLocation(Reference.MOD_ID, "dot")));
-        this.register(new TexturedCrosshair(new ResourceLocation(Reference.MOD_ID, "box")));
-        this.register(new TexturedCrosshair(new ResourceLocation(Reference.MOD_ID, "hit_marker")));
-        this.register(new TexturedCrosshair(new ResourceLocation(Reference.MOD_ID, "line")));
-        this.register(new TexturedCrosshair(new ResourceLocation(Reference.MOD_ID, "t")));
-        this.register(new TexturedCrosshair(new ResourceLocation(Reference.MOD_ID, "smiley")));
+        this.register(new TexturedCrosshair(ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "better_default")));
+        this.register(new TexturedCrosshair(ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "circle")));
+        this.register(new TexturedCrosshair(ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "filled_circle"), false));
+        this.register(new TexturedCrosshair(ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "square")));
+        this.register(new TexturedCrosshair(ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "round")));
+        this.register(new TexturedCrosshair(ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "arrow")));
+        this.register(new TexturedCrosshair(ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "dot")));
+        this.register(new TexturedCrosshair(ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "box")));
+        this.register(new TexturedCrosshair(ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "hit_marker")));
+        this.register(new TexturedCrosshair(ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "line")));
+        this.register(new TexturedCrosshair(ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "t")));
+        this.register(new TexturedCrosshair(ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "smiley")));
         this.register(new TechCrosshair());
     }
 
@@ -109,9 +109,9 @@ public class CrosshairHandler
     }
 
     @SubscribeEvent
-    public void onRenderOverlay(RenderGuiOverlayEvent.Pre event)
+    public void onRenderOverlay(RenderGuiLayerEvent.Pre event)
     {
-        if(event.getOverlay() != VanillaGuiOverlay.CROSSHAIR.type())
+        if(!event.getName().equals(VanillaGuiLayers.CROSSHAIR))
             return;
 
         Crosshair crosshair = this.getCurrentCrosshair();
@@ -142,20 +142,17 @@ public class CrosshairHandler
         if(mc.player.getUseItem().getItem() == Items.SHIELD)
             return;
 
-        PoseStack stack = event.getPoseStack();
+        PoseStack stack = event.getGuiGraphics().pose();
         stack.pushPose();
-        int scaledWidth = event.getWindow().getGuiScaledWidth();
-        int scaledHeight = event.getWindow().getGuiScaledHeight();
-        crosshair.render(mc, stack, scaledWidth, scaledHeight, event.getPartialTick());
+        int scaledWidth = event.getGuiGraphics().guiWidth();
+        int scaledHeight = event.getGuiGraphics().guiHeight();
+        crosshair.render(mc, stack, scaledWidth, scaledHeight, event.getPartialTick().getGameTimeDeltaPartialTick(false));
         stack.popPose();
     }
 
     @SubscribeEvent
-    public void onClientTick(TickEvent.ClientTickEvent event)
+    public void onClientTick(ClientTickEvent.Post event)
     {
-        if(event.phase != TickEvent.Phase.END)
-            return;
-
         Crosshair crosshair = this.getCurrentCrosshair();
         if(crosshair == null || crosshair.isDefault())
             return;
@@ -187,3 +184,4 @@ public class CrosshairHandler
         }
     }
 }
+

@@ -1,0 +1,12 @@
+{
+  "type": "cgm:workbench",
+  "materials": [
+    {
+      "count": 38,
+      "tag": "c:ingots/iron"
+    }
+  ],
+  "result": {
+    "id": "cgm:mini_gun"
+  }
+}

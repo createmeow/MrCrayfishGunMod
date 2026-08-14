@@ -25,12 +25,14 @@ import com.mrcrayfish.guns.network.message.S2CMessageBulletTrail;
 import com.mrcrayfish.guns.network.message.S2CMessageGunSound;
 import com.mrcrayfish.guns.util.GunEnchantmentHelper;
 import com.mrcrayfish.guns.util.GunModifierHelper;
+import com.mrcrayfish.guns.util.ItemStackUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -49,11 +51,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.NeoForge;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.function.Predicate;
 
@@ -78,14 +79,14 @@ public class ServerPlayHandler
         if(player.getUseItem().getItem() == Items.SHIELD)
             return;
 
-        Level world = player.level;
+        Level world = player.level();
         ItemStack heldItem = player.getItemInHand(InteractionHand.MAIN_HAND);
         if(heldItem.getItem() instanceof GunItem item && (Gun.hasAmmo(heldItem) || player.isCreative()))
         {
             Gun modifiedGun = item.getModifiedGun(heldItem);
             if(modifiedGun != null)
             {
-                if(MinecraftForge.EVENT_BUS.post(new GunFireEvent.Pre(player, heldItem)))
+                if(NeoForge.EVENT_BUS.post(new GunFireEvent.Pre(player, heldItem)).isCanceled())
                     return;
 
                 /* Updates the yaw and pitch with the clients current yaw and pitch */
@@ -131,10 +132,12 @@ public class ServerPlayHandler
                     double radius = Config.COMMON.network.projectileTrackingRange.get();
                     ParticleOptions data = GunEnchantmentHelper.getParticle(heldItem);
                     S2CMessageBulletTrail messageBulletTrail = new S2CMessageBulletTrail(spawnedProjectiles, projectileProps, player.getId(), data);
-                    PacketHandler.getPlayChannel().sendToNearbyPlayers(() -> LevelLocation.create(player.level, spawnX, spawnY, spawnZ, radius), messageBulletTrail);
+                    PacketHandler.getPlayChannel().sendToNearbyPlayers(() -> LevelLocation.create((ServerLevel) player.level(), spawnX, spawnY, spawnZ, radius), messageBulletTrail);
                 }
 
-                MinecraftForge.EVENT_BUS.post(new GunFireEvent.Post(player, heldItem));
+                player.level().gameEvent(GameEvent.PROJECTILE_SHOOT, player.position(), GameEvent.Context.of(player));
+
+                NeoForge.EVENT_BUS.post(new GunFireEvent.Post(player, heldItem));
 
                 if(Config.COMMON.aggroMobs.enabled.get())
                 {
@@ -168,20 +171,21 @@ public class ServerPlayHandler
                     double radius = GunModifierHelper.getModifiedFireSoundRadius(heldItem, Config.SERVER.gunShotMaxDistance.get());
                     boolean muzzle = modifiedGun.getDisplay().getFlash() != null;
                     S2CMessageGunSound messageSound = new S2CMessageGunSound(fireSound, SoundSource.PLAYERS, (float) posX, (float) posY, (float) posZ, volume, pitch, player.getId(), muzzle, false);
-                    PacketHandler.getPlayChannel().sendToNearbyPlayers(() -> LevelLocation.create(player.level, posX, posY, posZ, radius), messageSound);
+                    PacketHandler.getPlayChannel().sendToNearbyPlayers(() -> LevelLocation.create((ServerLevel) player.level(), posX, posY, posZ, radius), messageSound);
                 }
 
                 if(!player.isCreative())
                 {
-                    CompoundTag tag = heldItem.getOrCreateTag();
+                    CompoundTag tag = ItemStackUtil.getOrCreateTag(heldItem);
                     if(!tag.getBoolean("IgnoreAmmo"))
                     {
-                        int level = EnchantmentHelper.getItemEnchantmentLevel(ModEnchantments.RECLAIMED.get(), heldItem);
-                        if(level == 0 || player.level.random.nextInt(4 - Mth.clamp(level, 1, 2)) != 0)
+                        int level = EnchantmentHelper.getItemEnchantmentLevel(ModEnchantments.RECLAIMED, heldItem);
+                        if(level == 0 || player.level().random.nextInt(4 - Mth.clamp(level, 1, 2)) != 0)
                         {
                             tag.putInt("AmmoCount", Math.max(0, tag.getInt("AmmoCount") - 1));
                         }
                     }
+                    ItemStackUtil.setTag(heldItem, tag);
                 }
 
                 player.awardStat(Stats.ITEM_USED.get(item));
@@ -221,7 +225,7 @@ public class ServerPlayHandler
      */
     public static void handleCraft(ServerPlayer player, ResourceLocation id, BlockPos pos)
     {
-        Level world = player.level;
+        Level world = player.level();
 
         if(player.containerMenu instanceof WorkbenchContainer workbench)
         {
@@ -237,6 +241,15 @@ public class ServerPlayHandler
 
                 /* Gets the color based on the dye */
                 ItemStack stack = recipe.getItem();
+                if(stack.getItem() instanceof GunItem gunItem)
+                {
+                    CompoundTag gunTag = ItemStackUtil.getOrCreateTag(stack);
+                    if(!gunTag.contains("AmmoCount", Tag.TAG_INT))
+                    {
+                        gunTag.putInt("AmmoCount", 0);
+                    }
+                    ItemStackUtil.setTag(stack, gunTag);
+                }
                 ItemStack dyeStack = workbenchBlockEntity.getInventory().get(0);
                 if(dyeStack.getItem() instanceof DyeItem)
                 {
@@ -264,23 +277,24 @@ public class ServerPlayHandler
         ItemStack stack = player.getMainHandItem();
         if(stack.getItem() instanceof GunItem)
         {
-            CompoundTag tag = stack.getTag();
-            if(tag != null && tag.contains("AmmoCount", Tag.TAG_INT))
+            CompoundTag tag = ItemStackUtil.getOrCreateTag(stack);
+            if(tag.contains("AmmoCount", Tag.TAG_INT))
             {
                 int count = tag.getInt("AmmoCount");
                 tag.putInt("AmmoCount", 0);
+                ItemStackUtil.setTag(stack, tag);
 
                 GunItem gunItem = (GunItem) stack.getItem();
                 Gun gun = gunItem.getModifiedGun(stack);
                 ResourceLocation id = gun.getProjectile().getItem();
 
-                Item item = ForgeRegistries.ITEMS.getValue(id);
+                Item item = BuiltInRegistries.ITEM.get(id);
                 if(item == null)
                 {
                     return;
                 }
 
-                int maxStackSize = item.getMaxStackSize();
+                int maxStackSize = item.getMaxStackSize(new ItemStack(item));
                 int stacks = count / maxStackSize;
                 for(int i = 0; i < stacks; i++)
                 {
@@ -305,7 +319,8 @@ public class ServerPlayHandler
         player.getInventory().add(stack);
         if(stack.getCount() > 0)
         {
-            player.level.addFreshEntity(new ItemEntity(player.level, player.getX(), player.getY(), player.getZ(), stack.copy()));
+            Level playerLevel = player.level();
+            playerLevel.addFreshEntity(new ItemEntity(playerLevel, player.getX(), player.getY(), player.getZ(), stack.copy()));
         }
     }
 
@@ -317,7 +332,9 @@ public class ServerPlayHandler
         ItemStack heldItem = player.getMainHandItem();
         if(heldItem.getItem() instanceof GunItem)
         {
-            NetworkHooks.openScreen(player, new SimpleMenuProvider((windowId, playerInventory, player1) -> new AttachmentContainer(windowId, playerInventory, heldItem), Component.translatable("container.cgm.attachments")));
+            player.openMenu(new SimpleMenuProvider((windowId, playerInventory, player1) -> new AttachmentContainer(windowId, playerInventory, heldItem), Component.translatable("container.cgm.attachments")));
         }
     }
 }
+
+

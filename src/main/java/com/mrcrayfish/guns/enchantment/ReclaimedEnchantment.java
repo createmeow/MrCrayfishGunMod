@@ -1,6 +1,5 @@
 package com.mrcrayfish.guns.enchantment;
 
-import net.minecraft.world.entity.EquipmentSlot;
 
 /**
  * Author: MrCrayfish
@@ -9,7 +8,7 @@ public class ReclaimedEnchantment extends GunEnchantment
 {
     public ReclaimedEnchantment()
     {
-        super(Rarity.VERY_RARE, EnchantmentTypes.GUN, new EquipmentSlot[]{EquipmentSlot.MAINHAND}, Type.AMMO);
+        super(1, Type.AMMO);
     }
 
     @Override

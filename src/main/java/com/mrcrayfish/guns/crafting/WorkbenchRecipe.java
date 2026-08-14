@@ -1,22 +1,22 @@
 package com.mrcrayfish.guns.crafting;
 
 import com.google.common.collect.ImmutableList;
-import com.mrcrayfish.guns.blockentity.WorkbenchBlockEntity;
 import com.mrcrayfish.guns.init.ModRecipeSerializers;
 import com.mrcrayfish.guns.init.ModRecipeTypes;
 import com.mrcrayfish.guns.util.InventoryUtil;
-import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
 
 /**
  * Author: MrCrayfish
  */
-public class WorkbenchRecipe implements Recipe<WorkbenchBlockEntity>
+public class WorkbenchRecipe implements Recipe<RecipeInput>
 {
     private final ResourceLocation id;
     private final ItemStack item;
@@ -40,13 +40,13 @@ public class WorkbenchRecipe implements Recipe<WorkbenchBlockEntity>
     }
 
     @Override
-    public boolean matches(WorkbenchBlockEntity inv, Level worldIn)
+    public boolean matches(RecipeInput input, Level worldIn)
     {
         return false;
     }
 
     @Override
-    public ItemStack assemble(WorkbenchBlockEntity entity, RegistryAccess access)
+    public ItemStack assemble(RecipeInput input, HolderLookup.Provider access)
     {
         return ItemStack.EMPTY;
     }
@@ -58,12 +58,11 @@ public class WorkbenchRecipe implements Recipe<WorkbenchBlockEntity>
     }
 
     @Override
-    public ItemStack getResultItem(RegistryAccess access)
+    public ItemStack getResultItem(HolderLookup.Provider access)
     {
         return this.item.copy();
     }
 
-    @Override
     public ResourceLocation getId()
     {
         return this.id;

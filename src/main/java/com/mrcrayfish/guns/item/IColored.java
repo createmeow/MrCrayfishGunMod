@@ -1,6 +1,7 @@
 package com.mrcrayfish.guns.item;
 
 import com.mrcrayfish.guns.Config;
+import com.mrcrayfish.guns.util.ItemStackUtil;
 import net.minecraft.client.color.item.ItemColor;
 import net.minecraft.client.color.item.ItemColors;
 import net.minecraft.nbt.CompoundTag;
@@ -39,7 +40,7 @@ public interface IColored
      */
     default boolean hasColor(ItemStack stack)
     {
-        CompoundTag tagCompound = stack.getOrCreateTag();
+        CompoundTag tagCompound = ItemStackUtil.getOrCreateTag(stack);
         return tagCompound.contains("Color", Tag.TAG_INT);
     }
 
@@ -51,7 +52,7 @@ public interface IColored
      */
     default int getColor(ItemStack stack)
     {
-        CompoundTag tagCompound = stack.getOrCreateTag();
+        CompoundTag tagCompound = ItemStackUtil.getOrCreateTag(stack);
         return tagCompound.getInt("Color");
     }
 
@@ -63,8 +64,9 @@ public interface IColored
      */
     default void setColor(ItemStack stack, int color)
     {
-        CompoundTag tagCompound = stack.getOrCreateTag();
+        CompoundTag tagCompound = ItemStackUtil.getOrCreateTag(stack);
         tagCompound.putInt("Color", color);
+        ItemStackUtil.setTag(stack, tagCompound);
     }
 
     /**
@@ -74,8 +76,9 @@ public interface IColored
      */
     default void removeColor(ItemStack stack)
     {
-        CompoundTag tagCompound = stack.getOrCreateTag();
+        CompoundTag tagCompound = ItemStackUtil.getOrCreateTag(stack);
         tagCompound.remove("Color");
+        ItemStackUtil.setTag(stack, tagCompound);
     }
 
     /**
@@ -113,10 +116,10 @@ public interface IColored
 
             for(DyeItem dyeitem : dyes)
             {
-                float[] colorComponents = dyeitem.getDyeColor().getTextureDiffuseColors();
-                int red = (int) (colorComponents[0] * 255.0F);
-                int green = (int) (colorComponents[1] * 255.0F);
-                int blue = (int) (colorComponents[2] * 255.0F);
+                int color = dyeitem.getDyeColor().getTextureDiffuseColor();
+                int red = (color >> 16) & 255;
+                int green = (color >> 8) & 255;
+                int blue = color & 255;
                 maxColor += Math.max(red, Math.max(green, blue));
                 combinedColors[0] += red;
                 combinedColors[1] += green;
@@ -155,3 +158,4 @@ public interface IColored
         return false;
     }
 }
+

@@ -1,6 +1,5 @@
 package com.mrcrayfish.guns.enchantment;
 
-import net.minecraft.world.entity.EquipmentSlot;
 
 /**
  * Author: MrCrayfish
@@ -9,7 +8,7 @@ public class FireStarterEnchantment extends GunEnchantment
 {
     public FireStarterEnchantment()
     {
-        super(Rarity.VERY_RARE, EnchantmentTypes.GUN, new EquipmentSlot[]{EquipmentSlot.MAINHAND}, Type.PROJECTILE);
+        super(1, Type.PROJECTILE);
     }
 
     @Override
@@ -21,6 +20,6 @@ public class FireStarterEnchantment extends GunEnchantment
     @Override
     public int getMaxCost(int level)
     {
-        return super.getMinCost(level) + 30;
+        return this.getMinCost(level) + 30;
     }
 }

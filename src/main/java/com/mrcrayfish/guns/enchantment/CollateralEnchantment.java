@@ -1,6 +1,5 @@
 package com.mrcrayfish.guns.enchantment;
 
-import net.minecraft.world.entity.EquipmentSlot;
 
 /**
  * Author: MrCrayfish
@@ -9,7 +8,7 @@ public class CollateralEnchantment extends GunEnchantment
 {
     public CollateralEnchantment()
     {
-        super(Rarity.RARE, EnchantmentTypes.GUN, new EquipmentSlot[]{EquipmentSlot.MAINHAND}, Type.PROJECTILE);
+        super(2, Type.PROJECTILE);
     }
 
     @Override

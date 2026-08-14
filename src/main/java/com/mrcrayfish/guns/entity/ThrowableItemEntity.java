@@ -1,13 +1,15 @@
 package com.mrcrayfish.guns.entity;
 
+import com.mrcrayfish.guns.Config;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -15,16 +17,17 @@ import net.minecraft.world.entity.projectile.ThrowableProjectile;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.minecraftforge.entity.IEntityAdditionalSpawnData;
-import net.minecraftforge.network.NetworkHooks;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.entity.IEntityWithComplexSpawn;
 
 /**
  * Author: MrCrayfish
  */
-public abstract class ThrowableItemEntity extends ThrowableProjectile implements IEntityAdditionalSpawnData
+public abstract class ThrowableItemEntity extends ThrowableProjectile implements IEntityWithComplexSpawn
 {
     private ItemStack item = ItemStack.EMPTY;
     private boolean shouldBounce;
@@ -69,7 +72,7 @@ public abstract class ThrowableItemEntity extends ThrowableProjectile implements
     }
 
     @Override
-    protected float getGravity()
+    protected double getDefaultGravity()
     {
         return this.gravityVelocity;
     }
@@ -83,10 +86,26 @@ public abstract class ThrowableItemEntity extends ThrowableProjectile implements
     public void tick()
     {
         super.tick();
-        if(this.shouldBounce && this.tickCount >= this.maxLife)
+        if (this.shouldBounce && this.tickCount >= this.maxLife)
         {
             this.remove(RemovalReason.KILLED);
             this.onDeath();
+            return;
+        }
+
+        if (Config.COMMON.gameplay.projectileSlowDownInFluids.get() && this.isInFluidType()) {
+            Vec3 delta = this.getDeltaMovement();
+            double dx = delta.x;
+            double dy = delta.y;
+            double dz = delta.z;
+            double x1 = this.getX() + dx;
+            double y1 = this.getY() + dy;
+            double z1 = this.getZ() + dz;
+
+            for(int j = 0; j < 4; ++j) {
+                this.level().addParticle(ParticleTypes.BUBBLE, x1 - dx * 0.25D, y1 - dy * 0.25D, z1 - dz * 0.25D, dx, dy, dz);
+            }
+            this.setDeltaMovement(delta.scale(.5F));
         }
     }
 
@@ -102,12 +121,13 @@ public abstract class ThrowableItemEntity extends ThrowableProjectile implements
                 if(this.shouldBounce)
                 {
                     BlockPos resultPos = blockResult.getBlockPos();
-                    BlockState state = this.level.getBlockState(resultPos);
-                    SoundEvent event = state.getBlock().getSoundType(state, this.level, resultPos, this).getStepSound();
+                    BlockState state = this.level().getBlockState(resultPos);
+                    SoundEvent event = state.getBlock().getSoundType(state, this.level(), resultPos, this).getStepSound();
                     double speed = this.getDeltaMovement().length();
                     if(speed > 0.1)
                     {
-                        this.level.playSound(null, result.getLocation().x, result.getLocation().y, result.getLocation().z, event, SoundSource.AMBIENT, 1.0F, 1.0F);
+                        this.level().playSound(null, result.getLocation().x, result.getLocation().y, result.getLocation().z, event, SoundSource.AMBIENT, 1.0F, 1.0F);
+                        this.level().gameEvent(GameEvent.PROJECTILE_LAND, position(), GameEvent.Context.of(this));
                     }
                     this.bounce(blockResult.getDirection());
                 }
@@ -150,7 +170,7 @@ public abstract class ThrowableItemEntity extends ThrowableProjectile implements
                 break;
             case Y:
                 this.setDeltaMovement(this.getDeltaMovement().multiply(0.75, -0.25, 0.75));
-                if(this.getDeltaMovement().y() < this.getGravity())
+                if(this.getDeltaMovement().y() < this.gravityVelocity)
                 {
                     this.setDeltaMovement(this.getDeltaMovement().multiply(1, 0, 1));
                 }
@@ -168,24 +188,18 @@ public abstract class ThrowableItemEntity extends ThrowableProjectile implements
     }
 
     @Override
-    public void writeSpawnData(FriendlyByteBuf buffer)
+    public void writeSpawnData(RegistryFriendlyByteBuf buffer)
     {
         buffer.writeBoolean(this.shouldBounce);
         buffer.writeFloat(this.gravityVelocity);
-        buffer.writeItem(this.item);
+        ItemStack.STREAM_CODEC.encode(buffer, this.item);
     }
 
     @Override
-    public void readSpawnData(FriendlyByteBuf buffer)
+    public void readSpawnData(RegistryFriendlyByteBuf buffer)
     {
         this.shouldBounce = buffer.readBoolean();
         this.gravityVelocity = buffer.readFloat();
-        this.item = buffer.readItem();
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket()
-    {
-        return NetworkHooks.getEntitySpawningPacket(this);
+        this.item = ItemStack.STREAM_CODEC.decode(buffer);
     }
 }

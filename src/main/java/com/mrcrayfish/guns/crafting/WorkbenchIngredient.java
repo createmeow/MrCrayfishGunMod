@@ -2,7 +2,9 @@ package com.mrcrayfish.guns.crafting;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.network.FriendlyByteBuf;
+import com.google.gson.JsonSyntaxException;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
@@ -10,7 +12,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.ItemLike;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -19,21 +20,19 @@ import java.util.stream.Stream;
 /**
  * Author: MrCrayfish
  */
-public class WorkbenchIngredient extends Ingredient
+public class WorkbenchIngredient
 {
-    private final Value itemList;
+    private final Ingredient.Value itemList;
     private final int count;
 
-    protected WorkbenchIngredient(Stream<? extends Value> itemList, int count)
+    protected WorkbenchIngredient(Stream<? extends Ingredient.Value> itemList, int count)
     {
-        super(itemList);
-        this.itemList = null;
+        this.itemList = itemList.findFirst().orElseThrow(() -> new JsonSyntaxException("Workbench ingredient must contain an item or tag"));
         this.count = count;
     }
 
-    private WorkbenchIngredient(Value itemList, int count)
+    private WorkbenchIngredient(Ingredient.Value itemList, int count)
     {
-        super(Stream.of(itemList));
         this.itemList = itemList;
         this.count = count;
     }
@@ -43,25 +42,68 @@ public class WorkbenchIngredient extends Ingredient
         return this.count;
     }
 
-    @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer()
+    public boolean test(ItemStack stack)
     {
-        return Serializer.INSTANCE;
+        if(stack == null || stack.isEmpty())
+            return false;
+        for(ItemStack value : this.itemList.getItems())
+        {
+            if(value.is(stack.getItem()))
+                return true;
+        }
+        return false;
+    }
+
+    public ItemStack[] getItems()
+    {
+        return this.itemList.getItems().toArray(new ItemStack[0]);
+    }
+
+    public JsonElement toJson()
+    {
+        JsonObject object = new JsonObject();
+        if(this.itemList instanceof Ingredient.ItemValue itemValue)
+        {
+            object.addProperty("item", BuiltInRegistries.ITEM.getKey(itemValue.item().getItem()).toString());
+        }
+        else if(this.itemList instanceof Ingredient.TagValue tagValue)
+        {
+            object.addProperty("tag", tagValue.tag().location().toString());
+        }
+        else if(this.itemList instanceof UnknownValue unknownValue)
+        {
+            object.addProperty("item", unknownValue.id.toString());
+        }
+        object.addProperty("count", this.count);
+        return object;
     }
 
     public static WorkbenchIngredient fromJson(JsonObject object)
     {
-        Ingredient.Value value = valueFromJson(object);
+        Ingredient.Value value;
+        if(object.has("item"))
+        {
+            ResourceLocation id = ResourceLocation.parse(GsonHelper.getAsString(object, "item"));
+            if(BuiltInRegistries.ITEM.containsKey(id))
+            {
+                value = new Ingredient.ItemValue(new ItemStack(BuiltInRegistries.ITEM.get(id)));
+            }
+            else
+            {
+                value = new UnknownValue(id);
+            }
+        }
+        else if(object.has("tag"))
+        {
+            ResourceLocation id = ResourceLocation.parse(GsonHelper.getAsString(object, "tag"));
+            value = new Ingredient.TagValue(TagKey.create(Registries.ITEM, id));
+        }
+        else
+        {
+            throw new JsonSyntaxException("Workbench ingredient must contain an item or tag");
+        }
         int count = GsonHelper.getAsInt(object, "count", 1);
-        return new WorkbenchIngredient(Stream.of(value), count);
-    }
-
-    @Override
-    public JsonElement toJson()
-    {
-        JsonObject object = this.itemList.serialize();
-        object.addProperty("count", this.count);
-        return object;
+        return new WorkbenchIngredient(value, count);
     }
 
     public static WorkbenchIngredient of(ItemLike provider, int count)
@@ -84,41 +126,9 @@ public class WorkbenchIngredient extends Ingredient
         return new WorkbenchIngredient(new UnknownValue(id), count);
     }
 
-    public static class Serializer implements IIngredientSerializer<WorkbenchIngredient>
-    {
-        public static final WorkbenchIngredient.Serializer INSTANCE = new WorkbenchIngredient.Serializer();
-
-        @Override
-        public WorkbenchIngredient parse(FriendlyByteBuf buffer)
-        {
-            int itemCount = buffer.readVarInt();
-            int count = buffer.readVarInt();
-            Stream<Ingredient.ItemValue> values = Stream.generate(() -> new ItemValue(buffer.readItem())).limit(itemCount);
-            return new WorkbenchIngredient(values, count);
-        }
-
-        @Override
-        public WorkbenchIngredient parse(JsonObject object)
-        {
-            return WorkbenchIngredient.fromJson(object);
-        }
-
-        @Override
-        public void write(FriendlyByteBuf buffer, WorkbenchIngredient ingredient)
-        {
-            buffer.writeVarInt(ingredient.getItems().length);
-            buffer.writeVarInt(ingredient.count);
-            for(ItemStack stack : ingredient.getItems())
-            {
-                buffer.writeItem(stack);
-            }
-        }
-    }
-
     /**
      * Allows ability to define an ingredient from another mod without adding it as a dependency in
-     * the development environment. Serializes the data to be read by the regular
-     * {@link ItemValue}. Only use this for generating data.
+     * the development environment. Only use this for generating data.
      */
     @SuppressWarnings("ClassCanBeRecord")
     public static class UnknownValue implements Ingredient.Value
@@ -135,13 +145,6 @@ public class WorkbenchIngredient extends Ingredient
         {
             return Collections.emptyList();
         }
-
-        @Override
-        public JsonObject serialize()
-        {
-            JsonObject object = new JsonObject();
-            object.addProperty("item", this.id.toString());
-            return object;
-        }
     }
 }
+

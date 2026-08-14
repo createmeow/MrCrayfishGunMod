@@ -12,6 +12,7 @@ import com.mrcrayfish.guns.debug.IDebugWidget;
 import com.mrcrayfish.guns.debug.IEditorMenu;
 import com.mrcrayfish.guns.util.ScreenUtil;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
@@ -33,7 +34,7 @@ import java.util.function.Supplier;
  */
 public class EditorScreen extends Screen
 {
-    private static final ResourceLocation WINDOW_TEXTURE = new ResourceLocation(Reference.MOD_ID, "textures/gui/debug.png");
+    private static final ResourceLocation WINDOW_TEXTURE = ResourceLocation.fromNamespaceAndPath(Reference.MOD_ID, "textures/gui/debug.png");
     private static final int WIDTH = 150;
 
     private final Screen parent;
@@ -65,9 +66,6 @@ public class EditorScreen extends Screen
         }).pos(this.windowLeft + WIDTH - 12 - 4, this.windowTop + 4).size(12, 12).build());
 
         this.list = new PropertyList();
-        this.list.setRenderBackground(false);
-        this.list.setRenderTopAndBottom(false);
-        this.list.setLeftPos(this.windowLeft + 10);
         this.addWidget(this.list);
 
         widgets.forEach(pair -> {
@@ -78,13 +76,13 @@ public class EditorScreen extends Screen
     }
 
     @Override
-    public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTicks)
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks)
     {
         this.drawHeader(this.windowLeft, this.windowTop, this.windowWidth);
         this.drawBody(this.windowLeft + 4, this.windowTop + 20, this.windowWidth - 8, this.windowHeight - 20); // Remove header height
-        this.list.render(poseStack, mouseX, mouseY, partialTicks);
-        super.render(poseStack, mouseX, mouseY, partialTicks);
-        Screen.drawString(poseStack, this.font, this.getTitle(), this.windowLeft + 5, this.windowTop + 6, 0xFFFFFF);
+        this.list.render(graphics, mouseX, mouseY, partialTicks);
+        super.render(graphics, mouseX, mouseY, partialTicks);
+        graphics.drawString(this.font, this.getTitle(), this.windowLeft + 5, this.windowTop + 6, 0xFFFFFF);
     }
 
     @Override
@@ -126,13 +124,12 @@ public class EditorScreen extends Screen
         float uScale = 1.0F / 256.0F;
         float vScale = 1.0F / 256.0F;
         Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder buffer = tesselator.getBuilder();
-        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
-        buffer.vertex(x, y + height, 0).uv(u * uScale, (v + textureHeight) * vScale).endVertex();
-        buffer.vertex(x + width, y + height, 0).uv((u + textureWidth) * uScale, (v + textureHeight) * vScale).endVertex();
-        buffer.vertex(x + width, y, 0).uv((u + textureWidth) * uScale, v * vScale).endVertex();
-        buffer.vertex(x, y, 0).uv(u * uScale, v * vScale).endVertex();
-        BufferUploader.drawWithShader(buffer.end());
+        BufferBuilder buffer = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+        buffer.addVertex(x, y + height, 0).setUv(u * uScale, (v + textureHeight) * vScale);
+        buffer.addVertex(x + width, y + height, 0).setUv((u + textureWidth) * uScale, (v + textureHeight) * vScale);
+        buffer.addVertex(x + width, y, 0).setUv((u + textureWidth) * uScale, v * vScale);
+        buffer.addVertex(x, y, 0).setUv(u * uScale, v * vScale);
+        BufferUploader.drawWithShader(buffer.buildOrThrow());
     }
 
     private class PropertyList extends ContainerObjectSelectionList<PropertyEntry>
@@ -141,7 +138,7 @@ public class EditorScreen extends Screen
 
         public PropertyList()
         {
-            super(EditorScreen.this.minecraft, EditorScreen.this.windowWidth - 20, EditorScreen.this.windowHeight, EditorScreen.this.windowTop + 20, EditorScreen.this.windowTop + EditorScreen.this.windowHeight - 5, 34);
+            super(EditorScreen.this.minecraft, EditorScreen.this.windowWidth - 20, EditorScreen.this.windowHeight - 25, EditorScreen.this.windowTop + 20, 34);
         }
 
         @Override
@@ -151,12 +148,9 @@ public class EditorScreen extends Screen
         }
 
         @Override
-        public void updateNarration(NarrationElementOutput output) {}
-
-        @Override
         protected int getScrollbarPosition()
         {
-            return this.getLeft() + this.width - 6;
+            return this.getX() + this.width - 6;
         }
 
         @Override
@@ -169,14 +163,6 @@ public class EditorScreen extends Screen
         public int getRowWidth()
         {
             return EditorScreen.this.windowWidth - 20 - 2 - (this.getMaxScroll() > 0 ? 6 : 0);
-        }
-
-        @Override
-        public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTick)
-        {
-            ScreenUtil.startScissor(this.x0, this.y0, this.x1 - this.x0, this.y1 - this.y0);
-            super.render(poseStack, mouseX, mouseY, partialTick);
-            ScreenUtil.endScissor();
         }
     }
 
@@ -192,13 +178,13 @@ public class EditorScreen extends Screen
         }
 
         @Override
-        public void render(PoseStack poseStack, int index, int top, int left, int rowWidth, int rowHeight, int mouseX, int mouseY, boolean hovered, float partialTicks)
+        public void render(GuiGraphics graphics, int index, int top, int left, int rowWidth, int rowHeight, int mouseX, int mouseY, boolean hovered, float partialTicks)
         {
-            Screen.drawString(poseStack, EditorScreen.this.minecraft.font, this.label, left + 5, top, 0xFFFFFF);
+            graphics.drawString(EditorScreen.this.getMinecraft().font, this.label, left + 5, top, 0xFFFFFF);
             this.widget.setX(left);
             this.widget.setY(top + 10);
             this.widget.setWidth(rowWidth);
-            this.widget.render(poseStack, mouseX, mouseY, partialTicks);
+            this.widget.render(graphics, mouseX, mouseY, partialTicks);
         }
 
         @Override
@@ -216,7 +202,8 @@ public class EditorScreen extends Screen
         @Override
         public boolean isMouseOver(double mouseX, double mouseY)
         {
-            return ScreenUtil.isMouseWithin(EditorScreen.this.list.getRowLeft(), EditorScreen.this.list.getTop(), EditorScreen.this.list.getRowWidth(), EditorScreen.this.list.getHeight(), (int) mouseX, (int) mouseY) && super.isMouseOver(mouseX, mouseY);
+            return ScreenUtil.isMouseWithin(EditorScreen.this.list.getRowLeft(), EditorScreen.this.list.getY(), EditorScreen.this.list.getRowWidth(), EditorScreen.this.list.getHeight(), (int) mouseX, (int) mouseY) && super.isMouseOver(mouseX, mouseY);
         }
     }
 }
+

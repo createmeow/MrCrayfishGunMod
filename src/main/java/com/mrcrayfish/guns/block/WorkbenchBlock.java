@@ -2,6 +2,7 @@ package com.mrcrayfish.guns.block;
 
 import com.mrcrayfish.guns.blockentity.WorkbenchBlockEntity;
 import com.mrcrayfish.guns.util.VoxelShapeHelper;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -18,7 +19,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.network.NetworkHooks;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -36,6 +36,12 @@ public class WorkbenchBlock extends RotatedObjectBlock implements EntityBlock
     public WorkbenchBlock(Block.Properties properties)
     {
         super(properties);
+    }
+
+    @Override
+    protected MapCodec<? extends WorkbenchBlock> codec()
+    {
+        return simpleCodec(WorkbenchBlock::new);
     }
 
     private VoxelShape getShape(BlockState state)
@@ -67,14 +73,14 @@ public class WorkbenchBlock extends RotatedObjectBlock implements EntityBlock
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level world, BlockPos pos, Player playerEntity, InteractionHand hand, BlockHitResult result)
+    protected InteractionResult useWithoutItem(BlockState state, Level world, BlockPos pos, Player playerEntity, BlockHitResult result)
     {
         if(!world.isClientSide())
         {
             BlockEntity tileEntity = world.getBlockEntity(pos);
             if(tileEntity instanceof MenuProvider)
             {
-                NetworkHooks.openScreen((ServerPlayer) playerEntity, (MenuProvider) tileEntity, pos);
+                ((ServerPlayer) playerEntity).openMenu((MenuProvider) tileEntity, buffer -> buffer.writeBlockPos(pos));
             }
         }
         return InteractionResult.SUCCESS;

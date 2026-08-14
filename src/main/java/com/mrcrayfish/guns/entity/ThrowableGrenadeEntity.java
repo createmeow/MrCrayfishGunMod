@@ -4,6 +4,7 @@ import com.mrcrayfish.guns.Config;
 import com.mrcrayfish.guns.init.ModEntities;
 import com.mrcrayfish.guns.init.ModItems;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -41,7 +42,7 @@ public class ThrowableGrenadeEntity extends ThrowableItemEntity
     }
 
     @Override
-    protected void defineSynchedData()
+    protected void defineSynchedData(SynchedEntityData.Builder builder)
     {
     }
 
@@ -55,15 +56,15 @@ public class ThrowableGrenadeEntity extends ThrowableItemEntity
         {
             this.rotation += speed * 50;
         }
-        if (this.level.isClientSide)
+        if (this.level().isClientSide)
         {
-            this.level.addParticle(ParticleTypes.SMOKE, true, this.getX(), this.getY() + 0.25, this.getZ(), 0, 0, 0);
+            this.level().addParticle(ParticleTypes.SMOKE, true, this.getX(), this.getY() + 0.25, this.getZ(), 0, 0, 0);
         }
     }
 
     @Override
     public void onDeath()
     {
-        GrenadeEntity.createExplosion(this, Config.COMMON.grenades.explosionRadius.get().floatValue(), true);
+        GrenadeEntity.createExplosion(this, Config.COMMON.grenades.explosionRadius.get().floatValue(), Config.COMMON.grenades.enableBlockRemoval.get());
     }
 }

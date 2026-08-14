@@ -1,7 +1,9 @@
 package com.mrcrayfish.guns.mixin.common;
 
 import com.mrcrayfish.guns.item.GunItem;
+import com.mrcrayfish.guns.util.ItemStackUtil;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
@@ -19,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(EndPortalBlock.class)
 public class EndPortalBlockMixin
 {
-    @Inject(method = "entityInside", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;changeDimension(Lnet/minecraft/server/level/ServerLevel;)Lnet/minecraft/world/entity/Entity;"))
+    @Inject(method = "entityInside", at = @At("HEAD"))
     private void beforeChangeDimension(BlockState state, Level worldIn, BlockPos pos, Entity entityIn, CallbackInfo ci)
     {
         if(worldIn.dimension() == Level.END && entityIn instanceof ItemEntity)
@@ -28,9 +30,12 @@ public class EndPortalBlockMixin
             if(stack.getItem() instanceof GunItem)
             {
                 ItemStack gun = stack.copy();
-                gun.getOrCreateTag().putFloat("Scale", 2.0F);
+                CompoundTag tag = ItemStackUtil.getOrCreateTag(gun);
+                tag.putFloat("Scale", 2.0F);
+                ItemStackUtil.setTag(gun, tag);
                 ((ItemEntity) entityIn).setItem(gun);
             }
         }
     }
 }
+

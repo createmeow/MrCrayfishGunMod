@@ -10,6 +10,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 
 /**
@@ -69,7 +70,7 @@ public class AttachmentSlot extends Slot
     {
         if(this.container.isLoaded())
         {
-            this.player.level.playSound(null, this.player.getX(), this.player.getY() + 1.0, this.player.getZ(), ModSounds.UI_WEAPON_ATTACH.get(), SoundSource.PLAYERS, 0.5F, this.hasItem() ? 1.0F : 0.75F);
+            this.player.level().playSound(null, this.player.getX(), this.player.getY() + 1.0, this.player.getZ(), ModSounds.UI_WEAPON_ATTACH.get(), SoundSource.PLAYERS, 0.5F, this.hasItem() ? 1.0F : 0.75F);
         }
     }
 
@@ -83,6 +84,6 @@ public class AttachmentSlot extends Slot
     public boolean mayPickup(Player player)
     {
         ItemStack itemstack = this.getItem();
-        return (itemstack.isEmpty() || player.isCreative() || !EnchantmentHelper.hasBindingCurse(itemstack)) && super.mayPickup(player);
+        return (itemstack.isEmpty() || player.isCreative() || !EnchantmentHelper.hasTag(itemstack, EnchantmentTags.CURSE)) && super.mayPickup(player);
     }
 }
