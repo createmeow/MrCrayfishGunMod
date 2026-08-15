@@ -7,6 +7,7 @@ import com.mrcrayfish.guns.common.Gun;
 import com.mrcrayfish.guns.common.Gun.Projectile;
 import com.mrcrayfish.guns.common.ModTags;
 import com.mrcrayfish.guns.common.SpreadTracker;
+import com.mrcrayfish.guns.compat.SableHelper;
 import com.mrcrayfish.guns.event.GunProjectileHitEvent;
 import com.mrcrayfish.guns.init.ModDamageTypes;
 import com.mrcrayfish.guns.init.ModEnchantments;
@@ -57,9 +58,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
-import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.*;
-import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.phys.shapes.CollisionContext;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.entity.IEntityWithComplexSpawn;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -69,8 +69,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn
@@ -221,7 +219,7 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn
         {
             Vec3 startVec = this.position();
             Vec3 endVec = startVec.add(this.getDeltaMovement());
-            HitResult result = rayTraceBlocks(this.level(), new ClipContext(startVec, endVec, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this), IGNORE_LEAVES);
+            HitResult result = SableHelper.rayTraceBlocks(this.level(), startVec, endVec, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.of(this), IGNORE_LEAVES);
             if(result.getType() != HitResult.Type.MISS)
             {
                 endVec = result.getLocation();
@@ -383,7 +381,7 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn
         Vec3 grownHitPos = boundingBox.inflate(Config.COMMON.gameplay.growBoundingBoxAmount.get(), 0, Config.COMMON.gameplay.growBoundingBoxAmount.get()).clip(startVec, endVec).orElse(null);
         if(hitPos == null && grownHitPos != null)
         {
-            HitResult raytraceresult = rayTraceBlocks(this.level(), new ClipContext(startVec, grownHitPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this), IGNORE_LEAVES);
+            HitResult raytraceresult = SableHelper.rayTraceBlocks(this.level(), startVec, grownHitPos, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.of(this), IGNORE_LEAVES);
             if(raytraceresult.getType() == HitResult.Type.BLOCK)
             {
                 return null;
@@ -443,6 +441,53 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn
             BlockPos pos = blockHitResult.getBlockPos();
             BlockState state = this.level().getBlockState(pos);
             Block block = state.getBlock();
+
+            /* If the projectile hit a block stored inside a Sable sub-level, use the sub-level's
+               actual block state and level for interactions. The hit point is projected back into
+               global space so that impact effects are rendered at the visible position of the
+               sub-level. */
+            boolean subLevelHit = false;
+            Level hitLevel = this.level();
+            if(SableHelper.isSableLoaded() && SableHelper.isInPlotGrid(this.level(), pos))
+            {
+                BlockState subState = SableHelper.getSubLevelState(this.level(), pos);
+                Level subLevel = SableHelper.getSubLevelLevel(this.level(), pos);
+                if(subState != null && subLevel != null)
+                {
+                    state = subState;
+                    block = subState.getBlock();
+                    hitLevel = subLevel;
+                    hitVec = SableHelper.projectOutOfSubLevel(this.level(), hitVec);
+                    subLevelHit = true;
+                }
+            }
+
+            if(subLevelHit)
+            {
+                /* Sub-level blocks can still be shattered if fragile, but the destruction must
+                   happen inside the sub-level's own level at plot coordinates. */
+                if(Config.COMMON.gameplay.griefing.enableGlassBreaking.get() && state.is(ModTags.Blocks.FRAGILE))
+                {
+                    float destroySpeed = state.getDestroySpeed(hitLevel, pos);
+                    if(destroySpeed >= 0)
+                    {
+                        float chance = Config.COMMON.gameplay.griefing.fragileBaseBreakChance.get().floatValue() / (destroySpeed + 1);
+                        if(this.random.nextFloat() < chance)
+                        {
+                            hitLevel.destroyBlock(pos, Config.COMMON.gameplay.griefing.fragileBlockDrops.get());
+                        }
+                    }
+                }
+
+                if(!state.canBeReplaced())
+                {
+                    this.remove(RemovalReason.KILLED);
+                }
+
+                this.onHitBlock(state, BlockPos.containing(hitVec), blockHitResult.getDirection(), hitVec.x, hitVec.y, hitVec.z);
+                level().gameEvent(GameEvent.PROJECTILE_LAND, position(), GameEvent.Context.of(state));
+                return;
+            }
 
             if(Config.COMMON.gameplay.griefing.enableGlassBreaking.get() && state.is(ModTags.Blocks.FRAGILE))
             {
@@ -688,112 +733,6 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn
     private LevelLocation getDeathTargetPoint()
     {
         return LevelLocation.create((ServerLevel) this.level(), this.getX(), this.getY(), this.getZ(), 256);
-    }
-
-    /**
-     * A custom implementation of ray tracing that allows you to pass a predicate to ignore certain
-     * blocks when checking for collisions.
-     *
-     * @param world     the world to perform the ray trace
-     * @param context   the ray trace context
-     * @param ignorePredicate the block state predicate
-     * @return a result of the raytrace
-     */
-    private static BlockHitResult rayTraceBlocks(Level world, ClipContext context, Predicate<BlockState> ignorePredicate)
-    {
-        return performRayTrace(context, (rayTraceContext, blockPos) -> {
-            BlockState blockState = world.getBlockState(blockPos);
-            if(ignorePredicate.test(blockState)) return null;
-            FluidState fluidState = world.getFluidState(blockPos);
-            Vec3 startVec = rayTraceContext.getFrom();
-            Vec3 endVec = rayTraceContext.getTo();
-            VoxelShape blockShape = rayTraceContext.getBlockShape(blockState, world, blockPos);
-            BlockHitResult blockResult = world.clipWithInteractionOverride(startVec, endVec, blockPos, blockShape, blockState);
-            VoxelShape fluidShape = rayTraceContext.getFluidShape(fluidState, world, blockPos);
-            BlockHitResult fluidResult = fluidShape.clip(startVec, endVec, blockPos);
-            double blockDistance = blockResult == null ? Double.MAX_VALUE : rayTraceContext.getFrom().distanceToSqr(blockResult.getLocation());
-            double fluidDistance = fluidResult == null ? Double.MAX_VALUE : rayTraceContext.getFrom().distanceToSqr(fluidResult.getLocation());
-            return blockDistance <= fluidDistance ? blockResult : fluidResult;
-        }, (rayTraceContext) -> {
-            Vec3 Vector3d = rayTraceContext.getFrom().subtract(rayTraceContext.getTo());
-            return BlockHitResult.miss(rayTraceContext.getTo(), Direction.getNearest(Vector3d.x, Vector3d.y, Vector3d.z), BlockPos.containing(rayTraceContext.getTo()));
-        });
-    }
-
-    private static <T> T performRayTrace(ClipContext context, BiFunction<ClipContext, BlockPos, T> hitFunction, Function<ClipContext, T> p_217300_2_)
-    {
-        Vec3 startVec = context.getFrom();
-        Vec3 endVec = context.getTo();
-        if(startVec.equals(endVec))
-        {
-            return p_217300_2_.apply(context);
-        }
-        else
-        {
-            double startX = Mth.lerp(-0.0000001, endVec.x, startVec.x);
-            double startY = Mth.lerp(-0.0000001, endVec.y, startVec.y);
-            double startZ = Mth.lerp(-0.0000001, endVec.z, startVec.z);
-            double endX = Mth.lerp(-0.0000001, startVec.x, endVec.x);
-            double endY = Mth.lerp(-0.0000001, startVec.y, endVec.y);
-            double endZ = Mth.lerp(-0.0000001, startVec.z, endVec.z);
-            int blockX = Mth.floor(endX);
-            int blockY = Mth.floor(endY);
-            int blockZ = Mth.floor(endZ);
-            BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos(blockX, blockY, blockZ);
-            T t = hitFunction.apply(context, mutablePos);
-            if(t != null)
-            {
-                return t;
-            }
-
-            double deltaX = startX - endX;
-            double deltaY = startY - endY;
-            double deltaZ = startZ - endZ;
-            int signX = Mth.sign(deltaX);
-            int signY = Mth.sign(deltaY);
-            int signZ = Mth.sign(deltaZ);
-            double d9 = signX == 0 ? Double.MAX_VALUE : (double) signX / deltaX;
-            double d10 = signY == 0 ? Double.MAX_VALUE : (double) signY / deltaY;
-            double d11 = signZ == 0 ? Double.MAX_VALUE : (double) signZ / deltaZ;
-            double d12 = d9 * (signX > 0 ? 1.0D - Mth.frac(endX) : Mth.frac(endX));
-            double d13 = d10 * (signY > 0 ? 1.0D - Mth.frac(endY) : Mth.frac(endY));
-            double d14 = d11 * (signZ > 0 ? 1.0D - Mth.frac(endZ) : Mth.frac(endZ));
-
-            while(d12 <= 1.0D || d13 <= 1.0D || d14 <= 1.0D)
-            {
-                if(d12 < d13)
-                {
-                    if(d12 < d14)
-                    {
-                        blockX += signX;
-                        d12 += d9;
-                    }
-                    else
-                    {
-                        blockZ += signZ;
-                        d14 += d11;
-                    }
-                }
-                else if(d13 < d14)
-                {
-                    blockY += signY;
-                    d13 += d10;
-                }
-                else
-                {
-                    blockZ += signZ;
-                    d14 += d11;
-                }
-
-                T t1 = hitFunction.apply(context, mutablePos.set(blockX, blockY, blockZ));
-                if(t1 != null)
-                {
-                    return t1;
-                }
-            }
-
-            return p_217300_2_.apply(context);
-        }
     }
 
     /**
