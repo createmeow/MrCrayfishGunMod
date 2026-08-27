@@ -41,7 +41,6 @@ import java.util.concurrent.CompletableFuture;
 public class GunMod
 {
     public static boolean debugging = false;
-    public static boolean controllableLoaded = false;
     public static boolean curiosLoaded = false;
     public static boolean backpackedLoaded = false;
     public static boolean playerReviveLoaded = false;
@@ -80,7 +79,6 @@ public class GunMod
             bus.addListener(ClientHandler::registerAdditional);
             bus.addListener(ClientHandler::registerScreenFactories);
         }
-        controllableLoaded = ModList.get().isLoaded("controllable");
         curiosLoaded = ModList.get().isLoaded("curios");
         backpackedLoaded = ModList.get().isLoaded("backpacked");
         playerReviveLoaded = ModList.get().isLoaded("playerrevive");

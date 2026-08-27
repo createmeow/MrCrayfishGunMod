@@ -38,12 +38,6 @@ config="cgm.mixins.json"
 
 # ---------- Optional compat mods ----------
 [[dependencies.${mod_id}]]
-    modId="controllable"
-    type="optional"
-    versionRange="[0.23.0,)"
-    ordering="AFTER"
-    side="CLIENT"
-[[dependencies.${mod_id}]]
     modId="backpacked"
     type="optional"
     versionRange="[3.0.0,)"

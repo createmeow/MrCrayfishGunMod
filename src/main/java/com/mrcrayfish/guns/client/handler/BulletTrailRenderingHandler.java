@@ -146,14 +146,14 @@ public class BulletTrailRenderingHandler
         {
             RenderType bulletType = GunRenderType.getBulletTrail();
             VertexConsumer builder = renderTypeBuffer.getBuffer(bulletType);
-            builder.addVertex(0, 0, -0.035F).setColor(red, green, blue, alpha).setLight(15728880);
-            builder.addVertex(0, 0, 0.035F).setColor(red, green, blue, alpha).setLight(15728880);
-            builder.addVertex(0, -trailLength, 0).setColor(red, green, blue, alpha).setLight(15728880);
-            builder.addVertex(0, -trailLength, 0).setColor(red, green, blue, alpha).setLight(15728880);
-            builder.addVertex(-0.035F, 0, 0).setColor(red, green, blue, alpha).setLight(15728880);
-            builder.addVertex(0.035F, 0, 0).setColor(red, green, blue, alpha).setLight(15728880);
-            builder.addVertex(0, -trailLength, 0).setColor(red, green, blue, alpha).setLight(15728880);
-            builder.addVertex(0, -trailLength, 0).setColor(red, green, blue, alpha).setLight(15728880);
+            builder.addVertex(matrix4f, 0, 0, -0.035F).setColor(red, green, blue, alpha).setLight(15728880);
+            builder.addVertex(matrix4f, 0, 0, 0.035F).setColor(red, green, blue, alpha).setLight(15728880);
+            builder.addVertex(matrix4f, 0, -trailLength, 0).setColor(red, green, blue, alpha).setLight(15728880);
+            builder.addVertex(matrix4f, 0, -trailLength, 0).setColor(red, green, blue, alpha).setLight(15728880);
+            builder.addVertex(matrix4f, -0.035F, 0, 0).setColor(red, green, blue, alpha).setLight(15728880);
+            builder.addVertex(matrix4f, 0.035F, 0, 0).setColor(red, green, blue, alpha).setLight(15728880);
+            builder.addVertex(matrix4f, 0, -trailLength, 0).setColor(red, green, blue, alpha).setLight(15728880);
+            builder.addVertex(matrix4f, 0, -trailLength, 0).setColor(red, green, blue, alpha).setLight(15728880);
             Minecraft.getInstance().renderBuffers().bufferSource().endBatch(bulletType);
         }
 

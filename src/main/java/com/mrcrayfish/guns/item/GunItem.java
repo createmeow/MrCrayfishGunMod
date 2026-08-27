@@ -7,6 +7,7 @@ import com.mrcrayfish.guns.client.KeyBinds;
 import com.mrcrayfish.guns.common.Gun;
 import com.mrcrayfish.guns.common.NetworkGunManager;
 import com.mrcrayfish.guns.debug.Debug;
+import com.mrcrayfish.guns.init.ModEnchantments;
 import com.mrcrayfish.guns.util.GunEnchantmentHelper;
 import com.mrcrayfish.guns.util.GunModifierHelper;
 import com.mrcrayfish.guns.util.ItemStackUtil;
@@ -185,6 +186,11 @@ public class GunItem extends Item implements IColored, IMeta
     {
         if(enchantment.unwrapKey().map(key -> key.location().getNamespace().equals(Reference.MOD_ID)).orElse(false))
         {
+            /* Trigger Finger can only be applied to non-automatic guns (restores old SEMI_AUTO_GUN category) */
+            if(enchantment.is(ModEnchantments.TRIGGER_FINGER))
+            {
+                return !this.getModifiedGun(stack).getGeneral().isAuto();
+            }
             return true;
         }
         return stack.is(Items.ENCHANTED_BOOK) || enchantment.value().isSupportedItem(stack);

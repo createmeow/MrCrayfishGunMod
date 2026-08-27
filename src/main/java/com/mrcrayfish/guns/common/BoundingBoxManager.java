@@ -112,6 +112,10 @@ public class BoundingBoxManager
     @SubscribeEvent(receiveCanceled = true)
     public void onPlayerTick(PlayerTickEvent.Post event)
     {
+        /* Only track on the server side, matching old behaviour */
+        if(!event.getEntity().level().isClientSide)
+            return;
+
         if(!Config.COMMON.gameplay.improvedHitboxes.get())
             return;
 

@@ -3,8 +3,9 @@
   "description": {
     "translate": "enchantment.cgm.over_capacity"
   },
+  "exclusive_set": "#cgm:exclusive_weapon",
   "max_cost": {
-    "base": 55,
+    "base": 51,
     "per_level_above_first": 10
   },
   "max_level": 3,

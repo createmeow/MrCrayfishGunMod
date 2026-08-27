@@ -22,7 +22,9 @@ public class LevelRendererMixin
     @Inject(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;checkPoseStack(Lcom/mojang/blaze3d/vertex/PoseStack;)V", ordinal = 0))
     private void renderBullets(DeltaTracker deltaTracker, boolean drawBlockOutline, Camera info, GameRenderer gameRenderer, LightTexture lightTexture, Matrix4f projection, Matrix4f frustum, CallbackInfo ci)
     {
+        /* Since 1.21 renderLevel builds its PoseStack internally, recreate the camera rotation it applies */
         PoseStack stack = new PoseStack();
+        stack.mulPose(info.rotation());
         BulletTrailRenderingHandler.get().render(stack, deltaTracker.getGameTimeDeltaPartialTick(false));
     }
 }

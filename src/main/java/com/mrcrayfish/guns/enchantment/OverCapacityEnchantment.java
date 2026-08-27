@@ -26,6 +26,7 @@ public class OverCapacityEnchantment extends GunEnchantment
     @Override
     public int getMaxCost(int level)
     {
-        return this.getMinCost(level) + 50;
+        /* Old code used super.getMinCost(level) which resolved to the vanilla base formula 1 + (level - 1) * 10 */
+        return 1 + (level - 1) * 10 + 50;
     }
 }

@@ -3,9 +3,10 @@
   "description": {
     "translate": "enchantment.cgm.quick_hands"
   },
+  "exclusive_set": "#cgm:exclusive_ammo",
   "max_cost": {
     "base": 51,
-    "per_level_above_first": 10
+    "per_level_above_first": 0
   },
   "max_level": 2,
   "min_cost": {

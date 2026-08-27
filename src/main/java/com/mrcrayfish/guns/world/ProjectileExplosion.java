@@ -8,8 +8,12 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.ExplosionDamageCalculator;
 import net.minecraft.world.level.Level;
@@ -149,6 +153,21 @@ public class ProjectileExplosion extends Explosion
             entity.hurt(this.damageSource, (float) ((int) ((damage * damage + damage) / 2.0D * 7.0D * (double) radius + 1.0D)));
 
             double blastDamage = damage;
+            if(entity instanceof LivingEntity living)
+            {
+                /* 1.20.1 used ProtectionEnchantment.getExplosionKnockbackAfterDampener which was removed in 1.21.
+                 * Reimplemented per vanilla behaviour: reduces knockback by 15% per Blast Protection level (stacking). */
+                int blastProtLevel = 0;
+                for(ItemStack armor : living.getArmorSlots())
+                {
+                    blastProtLevel += EnchantmentHelper.getItemEnchantmentLevel(
+                            world.registryAccess().holderOrThrow(Enchantments.BLAST_PROTECTION), armor);
+                }
+                if(blastProtLevel > 0)
+                {
+                    blastDamage *= Mth.clamp(1.0D - blastProtLevel * 0.15D, 0.0D, 1.0D);
+                }
+            }
             entity.setDeltaMovement(entity.getDeltaMovement().add(deltaX * blastDamage, deltaY * blastDamage, deltaZ * blastDamage));
 
             if(entity instanceof Player player)

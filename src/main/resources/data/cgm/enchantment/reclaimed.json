@@ -3,6 +3,7 @@
   "description": {
     "translate": "enchantment.cgm.reclaimed"
   },
+  "exclusive_set": "#cgm:exclusive_ammo",
   "max_cost": {
     "base": 25,
     "per_level_above_first": 10

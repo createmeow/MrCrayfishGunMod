@@ -288,8 +288,9 @@ public class ServerPlayHandler
                 Gun gun = gunItem.getModifiedGun(stack);
                 ResourceLocation id = gun.getProjectile().getItem();
 
+                /* 1.21 registries return AIR instead of null for unknown ids */
                 Item item = BuiltInRegistries.ITEM.get(id);
-                if(item == null)
+                if(item == null || item == Items.AIR)
                 {
                     return;
                 }

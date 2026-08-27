@@ -3,6 +3,7 @@
   "description": {
     "translate": "enchantment.cgm.accelerator"
   },
+  "exclusive_set": "#cgm:exclusive_projectile",
   "max_cost": {
     "base": 30,
     "per_level_above_first": 10

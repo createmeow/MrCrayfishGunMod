@@ -3,6 +3,7 @@
   "description": {
     "translate": "enchantment.cgm.lightweight"
   },
+  "exclusive_set": "#cgm:exclusive_weapon",
   "max_cost": {
     "base": 35,
     "per_level_above_first": 0

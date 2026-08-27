@@ -721,13 +721,14 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn
     }
 
     @Override
-    public void remove(RemovalReason reason)
+    public void onClientRemoval()
     {
+        /* Restores old behaviour: notify clients only once when actually removed from the world */
         if(!this.level().isClientSide)
         {
             PacketHandler.getPlayChannel().sendToNearbyPlayers(this::getDeathTargetPoint, new S2CMessageRemoveProjectile(this.getId()));
         }
-        super.remove(reason);
+        super.onClientRemoval();
     }
 
     private LevelLocation getDeathTargetPoint()
@@ -751,6 +752,9 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn
         DamageSource source = entity instanceof ProjectileEntity projectile ? entity.damageSources().explosion(entity, projectile.getShooter()) : null;
         Explosion.BlockInteraction mode = breakTerrain ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP;
         Explosion explosion = new ProjectileExplosion(world, entity, source, null, entity.getX(), entity.getY(), entity.getZ(), radius, false, mode);
+
+        if(net.neoforged.neoforge.event.EventHooks.onExplosionStart(world, explosion))
+            return;
 
         // Do explosion logic
         explosion.explode();

@@ -83,7 +83,7 @@ public class ThrowableStunGrenadeEntity extends ThrowableGrenadeEntity {
         Vec3 eyes, directionGrenade;
         double distance;
         for (LivingEntity entity : this.level().getEntitiesOfClass(LivingEntity.class, new AABB(minX, minY, minZ, maxX, maxY, maxZ))) {
-            if (entity.isInvulnerableTo(this.level().damageSources().explosion(this, this)))
+            if (entity.ignoreExplosion(null))
                 continue;
 
             eyes = entity.getEyePosition(1.0F);

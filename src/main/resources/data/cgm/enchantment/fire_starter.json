@@ -3,6 +3,7 @@
   "description": {
     "translate": "enchantment.cgm.fire_starter"
   },
+  "exclusive_set": "#cgm:exclusive_projectile",
   "max_cost": {
     "base": 45,
     "per_level_above_first": 0
