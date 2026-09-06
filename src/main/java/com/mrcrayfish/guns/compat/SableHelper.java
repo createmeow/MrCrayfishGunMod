@@ -1,10 +1,5 @@
 package com.mrcrayfish.guns.compat;
 
-import dev.ryanhcode.sable.Sable;
-import dev.ryanhcode.sable.companion.math.BoundingBox3d;
-import dev.ryanhcode.sable.companion.math.Pose3dc;
-import dev.ryanhcode.sable.mixinterface.clip_overwrite.LevelPoseProviderExtension;
-import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
@@ -16,7 +11,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
-import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.fml.ModList;
 
 import javax.annotation.Nullable;
@@ -28,11 +22,9 @@ import java.util.function.Predicate;
  * Integration with the Sable (sub-levels) library mod. Allows gun projectiles to collide
  * with blocks living inside sub-levels instead of passing straight through their plots.
  * <p>
- * The raycast approach mirrors Sable's own {@code BlockGetter.clip} overwrite and the
- * Create compatibility helper: raycast the main level first, then raycast each intersecting
- * sub-level in its plot space and keep the closest hit.
- *
- * @author MrCrayfish (compat layer)
+ * This class is the safe entry point — it contains no direct references to Sable classes.
+ * When Sable is loaded, calls are delegated to {@link SableHelperImpl} which is only
+ * class-loaded at that point, preventing NoClassDefFoundError when Sable is absent.
  */
 public class SableHelper {
 
@@ -44,15 +36,6 @@ public class SableHelper {
      * Ray traces blocks in the given level, including blocks stored inside any intersecting
      * sub-levels. If Sable is not loaded, this behaves exactly like the original custom
      * implementation found in {@code ProjectileEntity}.
-     *
-     * @param level            the level to ray trace
-     * @param start            the start position of the ray
-     * @param end              the end position of the ray
-     * @param blockMode        the block collision mode for the ray trace
-     * @param fluidMode        the fluid collision mode for the ray trace
-     * @param collisionContext the collision context used for shape queries
-     * @param ignorePredicate  block states to ignore while ray tracing
-     * @return the closest block hit, either in the main level or in a sub-level
      */
     public static BlockHitResult rayTraceBlocks(Level level, Vec3 start, Vec3 end, ClipContext.Block blockMode, ClipContext.Fluid fluidMode, CollisionContext collisionContext, Predicate<BlockState> ignorePredicate) {
         ClipContext context = new ClipContext(start, end, blockMode, fluidMode, collisionContext);
@@ -60,83 +43,36 @@ public class SableHelper {
         if(!isSableLoaded()) {
             return result;
         }
-
-        double minDistance = result.getLocation().distanceTo(start);
-        BlockHitResult minResult = result;
-
-        Iterable<SubLevel> subLevels = Sable.HELPER.getAllIntersecting(level, new BoundingBox3d(start, end));
-        for(SubLevel subLevel : subLevels) {
-            if(subLevel.isRemoved()) {
-                continue;
-            }
-
-            Pose3dc pose = subLevel.logicalPose();
-            if(level instanceof LevelPoseProviderExtension extension) {
-                pose = extension.sable$getPose(subLevel);
-            }
-
-            Vec3 plotStart = pose.transformPositionInverse(start);
-            Vec3 plotEnd = pose.transformPositionInverse(end);
-
-            /* The ray is only traced inside a sub-level if it starts within its plot */
-            if(Sable.HELPER.getContaining(level, plotStart) != subLevel) {
-                continue;
-            }
-
-            ClipContext subContext = new ClipContext(plotStart, plotEnd, blockMode, fluidMode, collisionContext);
-            BlockHitResult subResult = performRayTrace(subLevel.getLevel(), subContext, ignorePredicate);
-            double distance = subResult.getLocation().distanceTo(plotStart);
-
-            if(subResult.getType() != HitResult.Type.MISS && (distance < minDistance || minResult.getType() == HitResult.Type.MISS)) {
-                minResult = subResult;
-                minDistance = distance;
-            }
-        }
-
-        return minResult;
+        return SableHelperImpl.rayTraceBlocks(level, start, end, blockMode, fluidMode, collisionContext, ignorePredicate);
     }
 
     /**
      * Checks if the given position (in plot space) is inside the plot grid of any sub-level.
      */
     public static boolean isInPlotGrid(Level level, BlockPos pos) {
-        return isSableLoaded() && Sable.HELPER.isInPlotGrid(level, pos);
-    }
-
-    /**
-     * Gets the sub-level that contains the given plot-space position, or null if none does.
-     *
-     * @return the containing sub-level, or null if the position is not inside a loaded sub-level plot
-     */
-    @Nullable
-    public static SubLevel getSubLevel(Level level, BlockPos plotPos) {
-        if(!isSableLoaded()) {
-            return null;
-        }
-        SubLevel subLevel = Sable.HELPER.getContaining(level, plotPos);
-        return subLevel != null && !subLevel.isRemoved() ? subLevel : null;
-    }
-
-    /**
-     * Gets the level of the sub-level that contains the given plot-space position, or null if none does.
-     *
-     * @return the sub-level's own level, or null if the position is not inside a loaded sub-level plot
-     */
-    @Nullable
-    public static Level getSubLevelLevel(Level level, BlockPos plotPos) {
-        SubLevel subLevel = getSubLevel(level, plotPos);
-        return subLevel != null ? subLevel.getLevel() : null;
+        return isSableLoaded() && SableHelperImpl.isInPlotGrid(level, pos);
     }
 
     /**
      * Gets the actual block state stored at the given plot-space position, if it belongs to a sub-level.
-     *
-     * @return the sub-level block state, or null if the position is not inside a sub-level plot
      */
     @Nullable
     public static BlockState getSubLevelState(Level level, BlockPos plotPos) {
-        SubLevel subLevel = getSubLevel(level, plotPos);
-        return subLevel != null ? subLevel.getLevel().getBlockState(plotPos) : null;
+        if(!isSableLoaded()) {
+            return null;
+        }
+        return SableHelperImpl.getSubLevelState(level, plotPos);
+    }
+
+    /**
+     * Gets the level of the sub-level that contains the given plot-space position, or null if none does.
+     */
+    @Nullable
+    public static Level getSubLevelLevel(Level level, BlockPos plotPos) {
+        if(!isSableLoaded()) {
+            return null;
+        }
+        return SableHelperImpl.getSubLevelLevel(level, plotPos);
     }
 
     /**
@@ -144,32 +80,26 @@ public class SableHelper {
      * not inside a sub-level, the position is returned unchanged.
      */
     public static Vec3 projectOutOfSubLevel(Level level, Vec3 plotPos) {
-        SubLevel subLevel = Sable.HELPER.getContaining(level, plotPos);
-        if(subLevel == null || subLevel.isRemoved()) {
+        if(!isSableLoaded()) {
             return plotPos;
         }
-
-        Pose3dc pose = subLevel.logicalPose();
-        if(level instanceof LevelPoseProviderExtension extension) {
-            pose = extension.sable$getPose(subLevel);
-        }
-        return pose.transformPosition(plotPos);
+        return SableHelperImpl.projectOutOfSubLevel(level, plotPos);
     }
 
     /**
      * A custom implementation of ray tracing that allows you to pass a predicate to ignore certain
      * blocks when checking for collisions. Ported from {@code ProjectileEntity}.
      */
-    private static BlockHitResult performRayTrace(Level world, ClipContext context, Predicate<BlockState> ignorePredicate) {
+    static BlockHitResult performRayTrace(Level world, ClipContext context, Predicate<BlockState> ignorePredicate) {
         return performRayTrace(context, (rayTraceContext, blockPos) -> {
             BlockState blockState = world.getBlockState(blockPos);
             if(ignorePredicate.test(blockState)) return null;
             FluidState fluidState = world.getFluidState(blockPos);
             Vec3 startVec = rayTraceContext.getFrom();
             Vec3 endVec = rayTraceContext.getTo();
-            VoxelShape blockShape = rayTraceContext.getBlockShape(blockState, world, blockPos);
+            var blockShape = rayTraceContext.getBlockShape(blockState, world, blockPos);
             BlockHitResult blockResult = world.clipWithInteractionOverride(startVec, endVec, blockPos, blockShape, blockState);
-            VoxelShape fluidShape = rayTraceContext.getFluidShape(fluidState, world, blockPos);
+            var fluidShape = rayTraceContext.getFluidShape(fluidState, world, blockPos);
             BlockHitResult fluidResult = fluidShape.clip(startVec, endVec, blockPos);
             double blockDistance = blockResult == null ? Double.MAX_VALUE : rayTraceContext.getFrom().distanceToSqr(blockResult.getLocation());
             double fluidDistance = fluidResult == null ? Double.MAX_VALUE : rayTraceContext.getFrom().distanceToSqr(fluidResult.getLocation());
