@@ -153,12 +153,12 @@ dependencies {
     // CMDCam 2.2.8
     compileOnly "maven.modrinth:hZw3uqi3:gnOLADrt"
     localRuntime "maven.modrinth:hZw3uqi3:gnOLADrt"
-    // Sophisticated Core 1.21.1-1.4.86.2259
-    compileOnly "maven.modrinth:nmoqTijg:fNqyH4kb"
-    localRuntime "maven.modrinth:nmoqTijg:fNqyH4kb"
-    // Sophisticated Backpacks 1.21.1-3.25.77.2074
-    compileOnly "maven.modrinth:TyCTlI4b:TNfeLXid"
-    localRuntime "maven.modrinth:TyCTlI4b:TNfeLXid"
+    // Sophisticated Core 1.21.1-1.5.1.2341 (runOnBackpacks API changed in SB 3.26.0+, requires SC 1.5.x)
+    compileOnly "maven.modrinth:nmoqTijg:PXl6rB3q"
+    localRuntime "maven.modrinth:nmoqTijg:PXl6rB3q"
+    // Sophisticated Backpacks 1.21.1-3.26.3.2158 (runOnBackpacks returns boolean instead of void since 3.26.0)
+    compileOnly "maven.modrinth:TyCTlI4b:AhPnzNtJ"
+    localRuntime "maven.modrinth:TyCTlI4b:AhPnzNtJ"
     // L2 Library 3.0.8 (dependency of L2Backpack)
     compileOnly "maven.modrinth:4Vh3BQ3F:640EOvKh"
     localRuntime "maven.modrinth:4Vh3BQ3F:640EOvKh"

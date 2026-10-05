@@ -64,7 +64,7 @@ config="cgm.mixins.json"
 [[dependencies.${mod_id}]]
     modId="sophisticatedbackpacks"
     type="optional"
-    versionRange="[1.0.0,)"
+    versionRange="[3.26.0,)"
     ordering="AFTER"
     side="BOTH"
 [[dependencies.${mod_id}]]
