@@ -144,7 +144,8 @@ public interface IColored
             blue = (int) ((float) blue * averageColor / maxValue);
             int finalColor = (red << 8) + green;
             finalColor = (finalColor << 8) + blue;
-            coloredItem.setColor(resultStack, finalColor);
+            // Keep the alpha byte, otherwise the tint renders fully transparent
+            coloredItem.setColor(resultStack, finalColor | 0xFF000000);
             return resultStack;
         }
     }

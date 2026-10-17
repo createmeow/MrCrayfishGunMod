@@ -213,7 +213,8 @@ public class WorkbenchScreen extends AbstractContainerScreen<WorkbenchContainer>
                     ItemStack dyeStack = this.workbench.getItem(0);
                     if (dyeStack.getItem() instanceof DyeItem) {
                         DyeColor color = ((DyeItem) dyeStack.getItem()).getDyeColor();
-                        colored.setColor(item, color.getTextureDiffuseColor() & 0xFFFFFF);
+                        // Keep the alpha byte, otherwise the tint renders fully transparent
+                        colored.setColor(item, color.getTextureDiffuseColor() | 0xFF000000);
                     } else {
                         colored.removeColor(item);
                     }

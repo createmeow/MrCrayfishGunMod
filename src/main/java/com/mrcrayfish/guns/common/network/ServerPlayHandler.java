@@ -259,7 +259,8 @@ public class ServerPlayHandler
                     if(IColored.isDyeable(stack))
                     {
                         IColored colored = (IColored) stack.getItem();
-                        colored.setColor(stack, color);
+                        // Keep the alpha byte, otherwise the tint renders fully transparent
+                        colored.setColor(stack, color | 0xFF000000);
                         workbenchBlockEntity.getInventory().set(0, ItemStack.EMPTY);
                     }
                 }

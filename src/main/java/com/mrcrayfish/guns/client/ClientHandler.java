@@ -86,13 +86,15 @@ public class ClientHandler {
             if (!IColored.isDyeable(stack)) {
                 return -1;
             }
+            // Colors are stored without an alpha byte (0x00RRGGBB). Since 1.21.1 the vanilla
+            // item renderer passes the tint's alpha channel to putBulkData, so ensure it's opaque.
             if (index == 0 && ItemStackUtil.hasTag(stack) && ItemStackUtil.getTag(stack).contains("Color", Tag.TAG_INT)) {
-                return ItemStackUtil.getTag(stack).getInt("Color");
+                return ItemStackUtil.getTag(stack).getInt("Color") | 0xFF000000;
             }
             if (index == 0 && stack.getItem() instanceof IAttachment) {
                 ItemStack renderingWeapon = GunRenderingHandler.get().getRenderingWeapon();
                 if (renderingWeapon != null) {
-                    return Minecraft.getInstance().getItemColors().getColor(renderingWeapon, index);
+                    return Minecraft.getInstance().getItemColors().getColor(renderingWeapon, index) | 0xFF000000;
                 }
             }
             if (index == 2) // Reticle colour
